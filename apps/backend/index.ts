@@ -1,18 +1,13 @@
 import express from "express";
+import cors from "cors";
 import { prisma } from "db/client";
+import authRouter from "./src/authentication";
 
 const app = express();
+app.use(cors({ origin: "http://localhost:5173" }));
+app.use(express.json());
 
-app.post("/signup", async (req, res) => {
-  const { username, password } = req.body;
-  const user = await prisma.user.create({
-    data: {
-      username,
-      password,
-    },
-  });
-  res.json(user);
-});
+app.use(authRouter);
 
 app.listen(3000, () => {
   console.log("Server is running on port 3000");
