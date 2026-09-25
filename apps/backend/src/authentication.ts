@@ -1,5 +1,5 @@
 import express, { type Response, type Request } from "express";
-import { SignupSchema, SigninSchema } from "./zod.ts";
+import { SignupSchema, SigninSchema } from "../zod.ts";
 import { prisma } from "db/client";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
@@ -23,6 +23,7 @@ router.post("/api/v1/signup", async (req: Request, res: Response) => {
   const existingUser = await prisma.user.findUnique({
     where: {
       email: data.email,
+      isDeleted: false,
     },
   });
   if (existingUser) {
@@ -60,6 +61,7 @@ router.post("/api/v1/signin", async (req: Request, res: Response) => {
   const existingUser = await prisma.user.findUnique({
     where: {
       email: data.email,
+      isDeleted: false,
     },
   });
 

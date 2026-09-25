@@ -12,10 +12,43 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Role {
+  member
+  admin
+}
+
 model User {
-  id       String @id @default(uuid())
-  email    String  @unique
-  password String?
-  description String?
+  id           String       @id @default(uuid())
+  email        String       @unique
+  password     String?
+  description  String?
   profilePhoto String?
+  isDeleted    Boolean      @default(false)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt @default(now())
+  memberships  Membership[]
+}
+
+model Organization {
+  id          String       @id @default(uuid())
+  name        String
+  description String
+  isDeleted   Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt @default(now())
+  memberships Membership[]
+}
+
+model Membership {
+  id           String       @id @default(uuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id])
+  orgId        String
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  role         Role
+  isDeleted    Boolean      @default(false)
+  createdAt    DateTime     @default(now()) 
+  updatedAt    DateTime     @updatedAt @default(now())
+
+  @@unique([userId, orgId])
 }
