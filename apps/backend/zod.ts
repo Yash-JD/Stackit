@@ -44,3 +44,13 @@ export const SectionSchema = z.object({
 export const SectionUpdateSchema = z.object({
   title: z.string().min(1),
 });
+
+export const IssueSchema = z.object({
+  title: z.string().min(1),
+  description: z.string(),
+});
+
+export const UpdateIssueSchema = z.object({
+  title: z.string().min(1).optional(),
+  description: z.string().optional(),
+});

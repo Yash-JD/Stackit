@@ -84,6 +84,7 @@ model Boards {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @default(now()) @updatedAt
   sections     Section[]
+  issues       Issue[]
 }
 
 model Section {
@@ -94,4 +95,18 @@ model Section {
   isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
+  issues    Issue[]
+}
+
+model Issue {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  boardId     String
+  board       Boards   @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  sectionId   String
+  section     Section  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  isDeleted   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
 }
