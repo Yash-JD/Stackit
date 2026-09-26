@@ -26,3 +26,12 @@ export const MembershipSchema = z.object({
   email: z.email(),
   orgId: z.string(),
 });
+
+export const BoardSchema = z.object({
+  title: z.string().min(1),
+  orgId: z.string(),
+});
+
+export const BoardUpdateSchema = z.object({
+  title: z.string().min(1),
+});

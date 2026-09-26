@@ -45,6 +45,7 @@ model Organization {
   updatedAt   DateTime     @default(now()) @updatedAt
   memberships Membership[]
   invitations Invitation[]
+  boards      Boards[]
 }
 
 model Membership {
@@ -72,4 +73,14 @@ model Invitation {
   status    InvitationStatus @default(PENDING)
   isDeleted Boolean          @default(false)
   createdAt DateTime         @default(now())
+}
+
+model Boards {
+  id           String       @id @default(uuid())
+  title        String
+  orgId        String
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  isDeleted    Boolean      @default(false)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @default(now()) @updatedAt
 }
