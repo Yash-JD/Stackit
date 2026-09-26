@@ -35,3 +35,12 @@ export const BoardSchema = z.object({
 export const BoardUpdateSchema = z.object({
   title: z.string().min(1),
 });
+
+export const SectionSchema = z.object({
+  title: z.string().min(1),
+  boardId: z.string(),
+});
+
+export const SectionUpdateSchema = z.object({
+  title: z.string().min(1),
+});
