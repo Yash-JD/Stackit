@@ -25,7 +25,9 @@ router.post(
         id: issueId,
         isDeleted: false,
         board: {
+          isDeleted: false,
           organization: {
+            isDeleted: false,
             membership: {
               some: {
                 userId,
@@ -83,8 +85,11 @@ router.put(
         id: commentId,
         isDeleted: false,
         issue: {
+          isDeleted: false,
           board: {
+            isDeleted: false,
             organization: {
+              isDeleted: false,
               membership: {
                 some: {
                   userId,
@@ -136,11 +141,15 @@ router.get(
     const issue = await prisma.issue.findFirst({
       where: {
         id: issueId,
+        isDeleted: false,
         board: {
+          isDeleted: false,
           organization: {
+            isDeleted: false,
             membership: {
               some: {
                 userId,
+                isDeleted: false,
               },
             },
           },
@@ -181,12 +190,17 @@ router.delete(
     const comment = await prisma.comments.findFirst({
       where: {
         id: commentId,
+        isDeleted: false,
         issue: {
+          isDeleted: false,
           board: {
+            isDeleted: false,
             organization: {
+              isDeleted: false,
               membership: {
                 some: {
                   userId,
+                  isDeleted: false,
                 },
               },
             },
