@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import swaggerUi from "swagger-ui-express";
-import apiDocument from "./src/apidocs";
+import apiDocument from "./shared/apidocs";
 import authRouter from "./src/authentication";
 import organizationRouter from "./src/organization";
 import orgMemberRouter from "./src/orgMember";
@@ -30,6 +30,7 @@ app.get("/health/db", async (_req, res) => {
     await checkDatabaseConnection(); // Function to check database connection
     res.status(200).json({ status: "ok" });
   } catch (error) {
+    console.error("Database connection failed:", error);
     res
       .status(500)
       .json({ status: "error", message: "Database connection failed" });
@@ -48,4 +49,9 @@ app.use(errorHandler);
 
 app.listen(3000, () => {
   console.log("Server is running on port 3000");
+  console.log("API documentation available at http://localhost:3000/api-docs");
+  console.log("Health check available at http://localhost:3000/health");
+  console.log(
+    "Database health check available at http://localhost:3000/health/db",
+  );
 });
