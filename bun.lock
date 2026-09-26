@@ -56,8 +56,10 @@
     "apps/websocket": {
       "name": "websocket",
       "dependencies": {
+        "@types/jsonwebtoken": "^9.0.10",
         "@types/ws": "^8.18.1",
         "db": "*",
+        "jsonwebtoken": "^9.0.3",
         "ws": "^8.21.3",
       },
       "devDependencies": {
