@@ -8,6 +8,7 @@ import orgMemberRouter from "./src/orgMember";
 import boardRouter from "./src/board";
 import sectionRouter from "./src/section";
 import issueRouter from "./src/issue";
+import commentRouter from "./src/comment";
 
 const app = express();
 app.use(cors({ origin: "http://localhost:5173" }));
@@ -22,6 +23,7 @@ app.use(orgMemberRouter);
 app.use(boardRouter);
 app.use(sectionRouter);
 app.use(issueRouter);
+app.use(commentRouter);
 
 app.listen(3000, () => {
   console.log("Server is running on port 3000");

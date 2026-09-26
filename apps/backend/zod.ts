@@ -54,3 +54,7 @@ export const UpdateIssueSchema = z.object({
   title: z.string().min(1).optional(),
   description: z.string().optional(),
 });
+
+export const CommentsSchema = z.object({
+  comment: z.string().min(1),
+});
