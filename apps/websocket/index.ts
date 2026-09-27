@@ -18,12 +18,6 @@ type Payload = {
 
 const WS_PORT = process.env.WS_PORT ? Number(process.env.WS_PORT) : 8080;
 
-interface Issue {
-  id: string;
-  title: string;
-  section: string;
-}
-
 class WsManager {
   private static instance: WsManager;
 
@@ -38,7 +32,7 @@ class WsManager {
     }[]
   > = {};
 
-  // Keeps track of which board each socket joined
+  // A socket can be connected to one board at a time.
   private joinedRooms = new Map<WebSocket, string>();
 
   private constructor() {
@@ -59,6 +53,7 @@ class WsManager {
 
   private initialize() {
     this.wss.on("connection", (socket, req) => {
+      // The client sends its JWT in the WebSocket URL query string.
       const query = req.url?.split("?")[1] ?? "";
       const token = new URLSearchParams(query).get("token");
 
@@ -70,6 +65,7 @@ class WsManager {
       let payload: Payload;
 
       try {
+        // Verify the token before accepting any messages from this socket.
         payload = jwt.verify(token, JWT_SECRET) as Payload;
       } catch {
         socket.close();
@@ -77,10 +73,12 @@ class WsManager {
       }
 
       socket.on("message", async (data) => {
+        // Every client action is sent as a JSON message.
         await this.handleMessage(data, payload, socket);
       });
 
       socket.on("close", () => {
+        // Remove the user and notify the other board members.
         this.handleDisconnect(socket);
       });
     });
@@ -102,10 +100,12 @@ class WsManager {
       const user = await prisma.user.findUnique({
         where: {
           id: payload.id,
+          isDeleted: false,
         },
       });
 
       if (!user) {
+        // A valid JWT is not enough if the account no longer exists.
         socket.close();
         return;
       }
@@ -114,13 +114,18 @@ class WsManager {
 
       if (parsedData.type === "join") {
         const boardId = parsedData.boardId;
+
+        // Only organization members may join a board's real-time room.
         const board = await prisma.boards.findFirst({
           where: {
             id: boardId,
+            isDeleted: false,
             organization: {
+              isDeleted: false,
               membership: {
                 some: {
                   userId: payload.id,
+                  isDeleted: false,
                 },
               },
             },
@@ -138,6 +143,7 @@ class WsManager {
           previousBoardId !== boardId &&
           this.boards[previousBoardId]
         ) {
+          // Move the socket out of its old room before joining the new one.
           this.boards[previousBoardId] = this.boards[previousBoardId].filter(
             (member) => member.socket !== socket,
           );
@@ -154,10 +160,12 @@ class WsManager {
         }
         this.joinedRooms.set(socket, boardId);
 
+        // Create the room the first time someone joins it.
         if (!this.boards[boardId]) {
           this.boards[boardId] = [];
         }
 
+        // Tell existing members that this user has arrived.
         this.boards[boardId].forEach(({ socket }) => {
           socket.send(
             JSON.stringify({
@@ -174,6 +182,7 @@ class WsManager {
           socket,
         });
 
+        // Send the new member the users who are already in the room.
         socket.send(
           JSON.stringify({
             type: "initial_state",
@@ -183,6 +192,7 @@ class WsManager {
           }),
         );
       } else if (parsedData.type === "issue_moved") {
+        // Relay a card movement to everyone else viewing this board.
         const boardId = this.joinedRooms.get(socket);
         if (!boardId) {
           return;
@@ -204,6 +214,7 @@ class WsManager {
             );
           });
       } else if (parsedData.type === "board_changed") {
+        // Tell other members to refresh after a board-level change.
         const boardId = this.joinedRooms.get(socket);
         if (!boardId) {
           return;
@@ -225,6 +236,7 @@ class WsManager {
   }
 
   private handleDisconnect(socket: WebSocket) {
+    // Find the room this connection belonged to.
     const joinedRoom = this.joinedRooms.get(socket);
 
     if (!joinedRoom) {
@@ -244,12 +256,14 @@ class WsManager {
     );
 
     if (leaving) {
+      // Notify the remaining members that the user left.
       this.boards[joinedRoom].forEach((member) => {
         member.socket.send(JSON.stringify({ type: "leave", id: leaving.id }));
       });
     }
 
     if (this.boards[joinedRoom].length === 0) {
+      // Delete empty rooms so memory is not kept forever.
       delete this.boards[joinedRoom];
     }
 
