@@ -21,7 +21,7 @@ router.post(
           isDeleted: false,
           organization: {
             isDeleted: false,
-            membership: {
+            memberships: {
               some: {
                 userId,
                 isDeleted: false,
@@ -82,7 +82,7 @@ router.get(
           isDeleted: false,
           organization: {
             isDeleted: false,
-            membership: {
+            memberships: {
               some: {
                 userId,
                 isDeleted: false,
@@ -93,7 +93,7 @@ router.get(
       },
       select: {
         id: true,
-        issue: true,
+        issues: true,
       },
     });
 
@@ -106,7 +106,7 @@ router.get(
 
     return res.status(200).json({
       success: true,
-      data: section.issue,
+      data: section.issues,
     });
   },
 );
@@ -136,7 +136,7 @@ router.put(
             isDeleted: false,
             organization: {
               isDeleted: false,
-              membership: {
+              memberships: {
                 some: {
                   userId,
                   isDeleted: false,
@@ -189,7 +189,7 @@ router.get(
             isDeleted: false,
             organization: {
               isDeleted: false,
-              membership: {
+              memberships: {
                 some: {
                   userId,
                   isDeleted: false,
@@ -232,7 +232,7 @@ router.delete(
             isDeleted: false,
             organization: {
               isDeleted: false,
-              membership: {
+              memberships: {
                 some: {
                   userId,
                   isDeleted: false,
@@ -282,7 +282,7 @@ router.put(
           isDeleted: false,
           organization: {
             isDeleted: false,
-            membership: {
+            memberships: {
               some: {
                 userId,
                 isDeleted: false,

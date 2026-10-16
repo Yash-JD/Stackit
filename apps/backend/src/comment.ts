@@ -28,7 +28,7 @@ router.post(
           isDeleted: false,
           organization: {
             isDeleted: false,
-            membership: {
+            memberships: {
               some: {
                 userId,
                 isDeleted: false,
@@ -90,7 +90,7 @@ router.put(
             isDeleted: false,
             organization: {
               isDeleted: false,
-              membership: {
+              memberships: {
                 some: {
                   userId,
                 },
@@ -146,7 +146,7 @@ router.get(
           isDeleted: false,
           organization: {
             isDeleted: false,
-            membership: {
+            memberships: {
               some: {
                 userId,
                 isDeleted: false,
@@ -197,7 +197,7 @@ router.delete(
             isDeleted: false,
             organization: {
               isDeleted: false,
-              membership: {
+              memberships: {
                 some: {
                   userId,
                   isDeleted: false,

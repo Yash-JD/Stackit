@@ -212,7 +212,7 @@ router.delete(
 
     if (targetMembership.role === "admin") {
       const adminCount = await prisma.membership.count({
-        where: { orgId, role: "admin" },
+        where: { orgId, role: "admin", isDeleted: false },
       });
       if (adminCount <= 1) {
         return res.status(400).json({
