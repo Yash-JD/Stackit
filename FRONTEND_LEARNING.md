@@ -119,4 +119,42 @@ The JWT is persisted in the browser so refreshing the page does not immediately 
 
 ### Next phase
 
-Phase 3 will create the authenticated API client and load organization and board data from the backend.
+Phase 3 creates a reusable authenticated API client. Organization and board loading is planned for Phase 4.
+
+## Phase 3: API Client
+
+### What changed
+
+- Added a reusable `apiRequest` function for HTTP requests.
+- Added optional JWT authentication through the `Authorization` header.
+- Kept signup and signin requests unauthenticated.
+- Added consistent handling for HTTP errors, API errors, and invalid server responses.
+- Used a generic response type so endpoints can describe their own `data` shape.
+- Shared the token storage key between the API client and auth context.
+
+### Concepts learned
+
+#### `fetch` and request options
+
+`fetch` sends an HTTP request and returns a `Response`. `RequestInit` describes options such as the method, headers, and body. The API helper centralizes those details so each endpoint can focus on its path and payload.
+
+#### Async functions
+
+`apiRequest` is `async`: it waits for the network response and then reads the response body. A failed HTTP status or an API response with `success: false` becomes an exception for the calling form or component to handle.
+
+#### Request headers and JWTs
+
+The helper adds a JSON content type when sending a JSON body. For protected requests, it reads the saved JWT and sends it in the `Authorization` header. This backend expects the raw JWT value, without a `Bearer` prefix.
+
+#### Typed API responses
+
+`ApiResponse<T>` lets each endpoint specify the expected type of `data`. The response is also checked at runtime for the shared API envelope (`success`, `msg`, and `error`) before it is returned.
+
+### Important files
+
+- `apps/frontend/src/api.ts`: shared HTTP client and authentication endpoint functions
+- `apps/frontend/src/auth.tsx`: JWT persistence and auth context
+
+### Next phase
+
+Phase 4 connects the sidebar and board list to the organization and board APIs, with loading, error, and empty states.

@@ -1,7 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
-import { signin as signinRequest } from "./api";
-
-const TOKEN_KEY = "stackit_token";
+import { AUTH_TOKEN_KEY, signin as signinRequest } from "./api";
 
 type AuthContextValue = {
   token: string | null;
@@ -14,18 +12,18 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() =>
-    localStorage.getItem(TOKEN_KEY),
+    localStorage.getItem(AUTH_TOKEN_KEY),
   );
 
   const signin = async (email: string, password: string) => {
     const response = await signinRequest({ email, password });
     if (!response.data) throw new Error("The server did not return a token");
-    localStorage.setItem(TOKEN_KEY, response.data);
+    localStorage.setItem(AUTH_TOKEN_KEY, response.data);
     setToken(response.data);
   };
 
   const logout = () => {
-    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(AUTH_TOKEN_KEY);
     setToken(null);
   };
 
