@@ -3,6 +3,9 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "start:dev": "cd ../.. && bun --watch --env-file apps/backend/.env apps/websocket/index.ts"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
