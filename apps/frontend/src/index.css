@@ -155,6 +155,18 @@ button {
   flex: 0 0 auto;
   font-size: 11px;
 }
+.board-move-error {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 14px;
+  padding: 9px 12px;
+  border: 1px solid rgba(234, 122, 122, 0.25);
+  border-radius: 7px;
+  color: #f0b7a9;
+  background: rgba(157, 73, 73, 0.13);
+  font-size: 11px;
+  line-height: 1.5;
+}
 .workspace-menu-option > span:last-child {
   min-width: 0;
   overflow: hidden;
@@ -875,6 +887,15 @@ button {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   background: rgba(25, 35, 38, 0.72);
+  transition:
+    border-color 0.16s,
+    background 0.16s,
+    box-shadow 0.16s;
+}
+.board-column-drop-target {
+  border-color: rgba(169, 225, 210, 0.62);
+  background: rgba(55, 89, 83, 0.5);
+  box-shadow: 0 0 0 2px rgba(118, 191, 170, 0.1);
 }
 .column-heading {
   display: flex;
@@ -927,10 +948,22 @@ button {
   background: #202d30;
   text-align: left;
   box-shadow: 0 5px 12px rgba(0, 0, 0, 0.1);
+  cursor: grab;
   transition:
     border-color 0.18s,
     transform 0.18s,
-    background 0.18s;
+    background 0.18s,
+    opacity 0.18s;
+}
+.task-card:active {
+  cursor: grabbing;
+}
+.task-card-dragging {
+  opacity: 0.42;
+}
+.task-card-moving {
+  cursor: progress;
+  opacity: 0.65;
 }
 .task-card:hover {
   border-color: rgba(169, 225, 210, 0.4);
@@ -979,6 +1012,11 @@ button {
   align-items: center;
   gap: 7px;
   margin-top: 16px;
+}
+.card-moving-label {
+  margin-left: auto;
+  color: #a9d9cc;
+  font-size: 9px;
 }
 .due-date {
   padding: 4px 6px;

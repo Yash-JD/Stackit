@@ -273,7 +273,7 @@ await loadBoard();
 
 #### Error handling for form flows
 
-Create and edit actions use `window.prompt()` for a quick focused interaction. When the API rejects the request, the component shows a board-level error message instead of silently leaving the screen stale.
+Create and edit actions use focused in-app forms. When the API rejects a request, the component shows the error instead of silently leaving the screen stale.
 
 #### Optimistic state vs. server truth
 
@@ -289,4 +289,40 @@ A real app should ideally keep the UI responsive with optimistic updates, but he
 
 ### Next phase
 
-Phase 7 focuses on drag-and-drop interactions and optimistic UI behavior while cards move between sections.
+Phase 7 adds drag-and-drop interactions and optimistic UI behavior while cards move between sections.
+
+## Phase 7: Drag-and-Drop and Optimistic UI
+
+### What changed
+
+- Made issue cards draggable and board sections valid drop targets.
+- Added visible feedback for the card being dragged, the destination section, and a move in progress.
+- Optimistically moved the card to the destination section before the API request completes.
+- Connected drops to the backend issue-move endpoint.
+- Restored a failed card move to its original section and position and displayed the API error.
+- Limited this phase to moving cards between sections. The current backend move endpoint does not persist ordering within a section.
+
+### Concepts learned
+
+#### Native drag-and-drop events
+
+Cards use the browser's drag events to carry their identity. Sections handle drag-over and drop events, so the UI can identify the card and destination without adding a drag-and-drop dependency.
+
+#### Optimistic updates
+
+The board state changes immediately when a card is dropped, rather than waiting for the network. The pending state tells the user that the server update is still running.
+
+#### Rollback after failure
+
+If the move request fails, the card is removed from its optimistic location and inserted back into its original section at the remembered position. The error is surfaced on the board.
+
+### Important files
+
+- `apps/frontend/src/components/BoardCanvas.tsx`: draggable cards, section drop targets, and interaction feedback
+- `apps/frontend/src/App.tsx`: optimistic board update and rollback behavior
+- `apps/frontend/src/api.ts`: API helper for the backend move endpoint
+- `apps/frontend/src/index.css`: drag, drop-target, pending, and error styles
+
+### Next phase
+
+Phase 8 extracts repeated data and mutation logic into custom hooks such as `useAuth`, `useBoards`, and `useBoard`.

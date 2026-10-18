@@ -326,3 +326,19 @@ export async function deleteIssue(issueId: string) {
     authenticated: true,
   });
 }
+
+export async function moveIssue(issueId: string, sectionId: string) {
+  const response = await apiRequest<IssueSummary>(
+    `/api/v1/issue/move/${encodeURIComponent(issueId)}/${encodeURIComponent(sectionId)}`,
+    {
+      method: "PUT",
+      authenticated: true,
+    },
+  );
+
+  if (!response.data) {
+    throw new Error("The server did not move the issue");
+  }
+
+  return response.data;
+}

@@ -1,3 +1,4 @@
+import { useState, type DragEvent } from "react";
 import { Check, MoreHorizontal, Plus, X } from "lucide-react";
 import type { BoardColumn, Card } from "../types";
 
@@ -5,6 +6,13 @@ type BoardCanvasProps = {
   columns: BoardColumn[];
   onAddCard: (columnId: string) => void;
   onSelectCard: (card: Card) => void;
+  onMoveCard: (
+    cardId: string,
+    sourceColumnId: string,
+    targetColumnId: string,
+  ) => void;
+  pendingMoveIds: string[];
+  moveError: string;
   showAddList: boolean;
   newListTitle: string;
   onNewListTitleChange: (title: string) => void;
@@ -17,6 +25,9 @@ export function BoardCanvas({
   columns,
   onAddCard,
   onSelectCard,
+  onMoveCard,
+  pendingMoveIds,
+  moveError,
   showAddList,
   newListTitle,
   onNewListTitleChange,
@@ -24,6 +35,11 @@ export function BoardCanvas({
   onAddList,
   onCancelAddList,
 }: BoardCanvasProps) {
+  const [draggedCard, setDraggedCard] = useState<{
+    id: string;
+    sourceColumnId: string;
+  } | null>(null);
+  const [dragOverColumnId, setDragOverColumnId] = useState<string | null>(null);
   const cardCount = columns.reduce(
     (total, column) => total + column.cards.length,
     0,
@@ -34,8 +50,13 @@ export function BoardCanvas({
       <div className="board-summary">
         <span>{cardCount} cards</span>
         <span className="summary-separator" />
-        <span>Updated just now</span>
+        <span>Drag cards between lists to move them</span>
       </div>
+      {moveError && (
+        <p className="board-move-error" role="alert">
+          {moveError}
+        </p>
+      )}
       <div className="columns-row">
         {columns.map((column) => (
           <BoardColumnView
@@ -43,6 +64,44 @@ export function BoardCanvas({
             column={column}
             onAddCard={onAddCard}
             onSelectCard={onSelectCard}
+            isDropTarget={dragOverColumnId === column.id}
+            draggedCardId={draggedCard?.id ?? null}
+            pendingMoveIds={pendingMoveIds}
+            onDragOver={(event) => {
+              event.preventDefault();
+              event.dataTransfer.dropEffect = "move";
+              setDragOverColumnId(column.id);
+            }}
+            onDragLeave={(event) => {
+              if (
+                !(event.relatedTarget instanceof Node) ||
+                !event.currentTarget.contains(event.relatedTarget)
+              ) {
+                setDragOverColumnId(null);
+              }
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              setDragOverColumnId(null);
+              const cardId = event.dataTransfer.getData("text/plain");
+              if (draggedCard && cardId === draggedCard.id) {
+                onMoveCard(
+                  draggedCard.id,
+                  draggedCard.sourceColumnId,
+                  column.id,
+                );
+              }
+              setDraggedCard(null);
+            }}
+            onCardDragStart={(cardId) => {
+              const card = column.cards.find((item) => item.id === cardId);
+              if (!card) return;
+              setDraggedCard({ id: card.id, sourceColumnId: column.id });
+            }}
+            onCardDragEnd={() => {
+              setDraggedCard(null);
+              setDragOverColumnId(null);
+            }}
           />
         ))}
         {showAddList ? (
@@ -81,13 +140,34 @@ function BoardColumnView({
   column,
   onAddCard,
   onSelectCard,
+  isDropTarget,
+  draggedCardId,
+  pendingMoveIds,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onCardDragStart,
+  onCardDragEnd,
 }: {
   column: BoardColumn;
   onAddCard: (columnId: string) => void;
   onSelectCard: (card: Card) => void;
+  isDropTarget: boolean;
+  draggedCardId: string | null;
+  pendingMoveIds: string[];
+  onDragOver: (event: DragEvent<HTMLElement>) => void;
+  onDragLeave: (event: DragEvent<HTMLElement>) => void;
+  onDrop: (event: DragEvent<HTMLElement>) => void;
+  onCardDragStart: (cardId: string) => void;
+  onCardDragEnd: () => void;
 }) {
   return (
-    <section className="board-column">
+    <section
+      className={`board-column ${isDropTarget ? "board-column-drop-target" : ""}`}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
       <div className="column-heading">
         <div className="column-title">
           <span
@@ -107,8 +187,17 @@ function BoardColumnView({
       <div className="card-list">
         {column.cards.map((card) => (
           <button
-            className="task-card"
+            className={`task-card ${
+              draggedCardId === card.id ? "task-card-dragging" : ""
+            } ${pendingMoveIds.includes(card.id) ? "task-card-moving" : ""}`}
             key={card.id}
+            draggable={!pendingMoveIds.includes(card.id)}
+            onDragStart={(event) => {
+              event.dataTransfer.setData("text/plain", card.id);
+              event.dataTransfer.effectAllowed = "move";
+              onCardDragStart(card.id);
+            }}
+            onDragEnd={onCardDragEnd}
             onClick={() => onSelectCard(card)}
           >
             <div className="card-label">
@@ -121,6 +210,11 @@ function BoardColumnView({
             <p>{card.description}</p>
             <div className="card-meta">
               <span className="mini-avatar">Y</span>
+              {pendingMoveIds.includes(card.id) && (
+                <span className="card-moving-label" role="status">
+                  Moving...
+                </span>
+              )}
               {card.due && <span className="due-date">{card.due}</span>}
               <span className="card-comments">•••</span>
             </div>

@@ -21,6 +21,7 @@ import {
   getBoardSections,
   getIssuesForSection,
   getOrganizations,
+  moveIssue,
   renameBoard,
   updateIssue,
 } from "./api";
@@ -364,6 +365,8 @@ function Board() {
   const [dialogDescription, setDialogDescription] = useState("");
   const [dialogError, setDialogError] = useState("");
   const [isSubmittingDialog, setIsSubmittingDialog] = useState(false);
+  const [pendingMoveIds, setPendingMoveIds] = useState<string[]>([]);
+  const [moveError, setMoveError] = useState("");
 
   const loadBoard = useCallback(async () => {
     if (!boardId) return;
@@ -465,6 +468,77 @@ function Board() {
       })),
     [activeFilter, columns, query],
   );
+
+  const handleMoveCard = async (
+    cardId: string,
+    sourceColumnId: string,
+    targetColumnId: string,
+  ) => {
+    if (
+      sourceColumnId === targetColumnId ||
+      pendingMoveIds.includes(cardId)
+    ) {
+      return;
+    }
+
+    const sourceColumn = columns.find(
+      (column) => column.id === sourceColumnId,
+    );
+    const sourceIndex =
+      sourceColumn?.cards.findIndex((card) => card.id === cardId) ?? -1;
+    const card = sourceIndex >= 0 ? sourceColumn?.cards[sourceIndex] : undefined;
+
+    if (!card || !columns.some((column) => column.id === targetColumnId)) return;
+
+    setMoveError("");
+    setPendingMoveIds((current) => [...current, cardId]);
+    setColumns((current) =>
+      current.map((column) => {
+        if (column.id === sourceColumnId) {
+          return {
+            ...column,
+            cards: column.cards.filter((item) => item.id !== cardId),
+          };
+        }
+        if (column.id === targetColumnId) {
+          return { ...column, cards: [...column.cards, card] };
+        }
+        return column;
+      }),
+    );
+
+    try {
+      await moveIssue(cardId, targetColumnId);
+    } catch (error) {
+      setColumns((current) => {
+        let latestCard = card;
+        const columnsWithoutCard = current.map((column) => {
+          const currentCard = column.cards.find((item) => item.id === cardId);
+          if (currentCard) latestCard = currentCard;
+          return {
+            ...column,
+            cards: column.cards.filter((item) => item.id !== cardId),
+          };
+        });
+
+        return columnsWithoutCard.map((column) => {
+          if (column.id !== sourceColumnId) return column;
+          const cards = [...column.cards];
+          cards.splice(Math.min(sourceIndex, cards.length), 0, latestCard);
+          return { ...column, cards };
+        });
+      });
+      setMoveError(
+        error instanceof Error
+          ? `Unable to move card: ${error.message}`
+          : "Unable to move card. The card was returned to its original list.",
+      );
+    } finally {
+      setPendingMoveIds((current) =>
+        current.filter((pendingId) => pendingId !== cardId),
+      );
+    }
+  };
 
   const openDialog = (nextDialog: BoardDialog) => {
     setDialog(nextDialog);
@@ -620,6 +694,11 @@ function Board() {
         ) : (
           <BoardCanvas
             columns={visibleColumns}
+            onMoveCard={(cardId, sourceColumnId, targetColumnId) => {
+              void handleMoveCard(cardId, sourceColumnId, targetColumnId);
+            }}
+            pendingMoveIds={pendingMoveIds}
+            moveError={moveError}
             onAddCard={(columnId) =>
               openDialog({ type: "create-card", columnId })
             }
