@@ -1,8 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import "./index.css";
-import { Navigate, Outlet, Route, Routes, useParams } from "react-router";
+import { Navigate, Outlet, Route, Routes, useNavigate, useParams } from "react-router";
 import { useAuth } from "./auth";
-import { getBoardSections, getIssuesForSection, getOrganizations } from "./api";
+import {
+  createIssue,
+  createSection,
+  deleteBoard,
+  deleteIssue,
+  getBoardSections,
+  getIssuesForSection,
+  getOrganizations,
+  renameBoard,
+  updateIssue,
+} from "./api";
 import { SigninPage, SignupPage } from "./components/AuthPage";
 import { BoardCanvas, CardDetail } from "./components/BoardCanvas";
 import { BoardHeader, BoardTopbar } from "./components/BoardTopbar";
@@ -31,6 +41,7 @@ function ProtectedRoute() {
 }
 
 function Board() {
+  const navigate = useNavigate();
   const { boardId } = useParams();
   const [columns, setColumns] = useState<BoardColumn[]>([]);
   const [boardTitle, setBoardTitle] = useState("Board");
@@ -43,93 +54,87 @@ function Board() {
   const [isLoadingBoard, setIsLoadingBoard] = useState(true);
   const [boardError, setBoardError] = useState("");
 
-  useEffect(() => {
-    let isCurrent = true;
+  const loadBoard = useCallback(async () => {
+    if (!boardId) return;
 
-    const loadBoard = async () => {
-      if (!boardId) return;
+    setIsLoadingBoard(true);
+    setBoardError("");
 
-      setIsLoadingBoard(true);
-      setBoardError("");
+    try {
+      const organizations = await getOrganizations();
 
-      try {
-        const organizations = await getOrganizations();
-        if (!isCurrent) return;
+      for (const organization of organizations) {
+        const sectionsResponse = await getBoardSections(organization.id);
+        const matchingBoard = sectionsResponse.find((board) => board.id === boardId);
 
-        for (const organization of organizations) {
-          const sectionsResponse = await getBoardSections(organization.id);
-          const matchingBoard = sectionsResponse.find(
-            (board) => board.id === boardId,
-          );
+        if (!matchingBoard) continue;
 
-          if (!matchingBoard) continue;
+        const sectionColors = [
+          "#8d9baa",
+          "#edb44f",
+          "#6ec5b8",
+          "#88a9df",
+        ];
+        const labels: CardLabel[] = ["Research", "Build", "Design"];
 
-          const sectionColors = [
-            "#8d9baa",
-            "#edb44f",
-            "#6ec5b8",
-            "#88a9df",
-          ];
-          const labels: CardLabel[] = ["Research", "Build", "Design"];
+        const nextColumns = await Promise.all(
+          matchingBoard.sections
+            .filter((section) => !section.isDeleted)
+            .map(async (section, index) => {
+              const issues = await getIssuesForSection(section.id);
+              const color =
+                sectionColors[index % sectionColors.length] ?? "#8d9baa";
 
-          const nextColumns = await Promise.all(
-            matchingBoard.sections
-              .filter((section) => !section.isDeleted)
-              .map(async (section, index) => {
-                const issues = await getIssuesForSection(section.id);
-                const color = sectionColors[index % sectionColors.length] ?? "#8d9baa";
+              return {
+                id: section.id,
+                title: section.title,
+                color,
+                cards: issues
+                  .filter((issue) => !issue.isDeleted)
+                  .map((issue, issueIndex) => {
+                    const label =
+                      labels[issueIndex % labels.length] ?? "Build";
 
-                return {
-                  id: section.id,
-                  title: section.title,
-                  color,
-                  cards: issues
-                    .filter((issue) => !issue.isDeleted)
-                    .map((issue, issueIndex) => {
-                      const label =
-                        labels[issueIndex % labels.length] ?? "Build";
-
-                      return {
-                        id: issue.id,
-                        title: issue.title,
-                        label,
-                        description: issue.description || "No description added yet.",
-                      };
-                    }),
-                } satisfies BoardColumn;
-              }),
-          );
-
-          if (isCurrent) {
-            setBoardTitle(matchingBoard.title);
-            setColumns(nextColumns);
-          }
-          return;
-        }
-
-        if (isCurrent) {
-          setColumns([]);
-          setBoardTitle("Board");
-          setBoardError("This board could not be found.");
-        }
-      } catch (error) {
-        if (!isCurrent) return;
-        setColumns([]);
-        setBoardTitle("Board");
-        setBoardError(
-          error instanceof Error ? error.message : "Unable to load board data.",
+                    return {
+                      id: issue.id,
+                      title: issue.title,
+                      label,
+                      description:
+                        issue.description || "No description added yet.",
+                    };
+                  }),
+              } satisfies BoardColumn;
+            }),
         );
-      } finally {
-        if (isCurrent) setIsLoadingBoard(false);
+
+        setBoardTitle(matchingBoard.title);
+        setColumns(nextColumns);
+        return;
       }
-    };
+
+      setColumns([]);
+      setBoardTitle("Board");
+      setBoardError("This board could not be found.");
+    } catch (error) {
+      setColumns([]);
+      setBoardTitle("Board");
+      setBoardError(
+        error instanceof Error ? error.message : "Unable to load board data.",
+      );
+    } finally {
+      setIsLoadingBoard(false);
+    }
+  }, [boardId]);
+
+  useEffect(() => {
+    if (!boardId) {
+      setBoardError("This board could not be found.");
+      setIsLoadingBoard(false);
+      return;
+    }
 
     void loadBoard();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [boardId]);
+  }, [boardId, loadBoard]);
 
   const visibleColumns = useMemo(
     () =>
@@ -147,40 +152,107 @@ function Board() {
     [activeFilter, columns, query],
   );
 
-  const addCard = (columnId: string) => {
+  const handleBoardRename = async () => {
+    if (!boardId) return;
+
+    const nextTitle = window.prompt("Rename board", boardTitle);
+    if (!nextTitle?.trim()) return;
+
+    try {
+      await renameBoard(boardId, nextTitle.trim());
+      setBoardTitle(nextTitle.trim());
+      await loadBoard();
+    } catch (error) {
+      setBoardError(
+        error instanceof Error ? error.message : "Unable to rename this board.",
+      );
+    }
+  };
+
+  const handleBoardDelete = async () => {
+    if (!boardId) return;
+
+    const confirmed = window.confirm("Delete this board? This action cannot be undone.");
+    if (!confirmed) return;
+
+    try {
+      await deleteBoard(boardId);
+      navigate("/", { replace: true });
+    } catch (error) {
+      setBoardError(
+        error instanceof Error ? error.message : "Unable to delete this board.",
+      );
+    }
+  };
+
+  const addCard = async (columnId: string) => {
     const title = window.prompt("Card title");
     if (!title?.trim()) return;
 
-    const card: Card = {
-      id: crypto.randomUUID(),
-      title: title.trim(),
-      label: "Build",
-      description: "A new card ready for the next step.",
-    };
+    const description =
+      window.prompt("Card description", "No description added yet.") ??
+      "No description added yet.";
 
-    setColumns((current) =>
-      current.map((column) =>
-        column.id === columnId
-          ? { ...column, cards: [...column.cards, card] }
-          : column,
-      ),
-    );
+    try {
+      await createIssue(columnId, title.trim(), description.trim() || "No description added yet.");
+      await loadBoard();
+    } catch (error) {
+      setBoardError(
+        error instanceof Error ? error.message : "Unable to create this card.",
+      );
+    }
   };
 
-  const addList = () => {
-    if (!newListTitle.trim()) return;
+  const addList = async () => {
+    if (!boardId || !newListTitle.trim()) {
+      setShowAddList(false);
+      setNewListTitle("");
+      return;
+    }
 
-    setColumns((current) => [
-      ...current,
-      {
-        id: crypto.randomUUID(),
-        title: newListTitle.trim(),
-        color: "#c69adf",
-        cards: [],
-      },
-    ]);
-    setNewListTitle("");
-    setShowAddList(false);
+    try {
+      await createSection(boardId, newListTitle.trim());
+      setNewListTitle("");
+      setShowAddList(false);
+      await loadBoard();
+    } catch (error) {
+      setBoardError(
+        error instanceof Error ? error.message : "Unable to create this list.",
+      );
+    }
+  };
+
+  const handleEditCard = async (card: Card) => {
+    const title = window.prompt("Edit card title", card.title);
+    if (!title?.trim()) return;
+
+    const description =
+      window.prompt("Edit card description", card.description) ?? card.description;
+
+    try {
+      await updateIssue(card.id, title.trim(), description.trim() || "No description added yet.");
+      setSelectedCard(null);
+      await loadBoard();
+    } catch (error) {
+      setBoardError(
+        error instanceof Error ? error.message : "Unable to update this card.",
+      );
+    }
+  };
+
+  const handleDeleteCard = async (card: Card) => {
+    const confirmed = window.confirm(`Delete "${card.title}"?`);
+    if (!confirmed) return;
+
+    try {
+      await deleteIssue(card.id);
+      setSelectedCard(null);
+      await loadBoard();
+    } catch (error) {
+      setBoardError(
+        error instanceof Error ? error.message : "Unable to delete this card.",
+      );
+    }
   };
 
   return (
@@ -192,7 +264,11 @@ function Board() {
           boardTitle={boardTitle}
           onMenuClick={() => setShowSidebar((current) => !current)}
         />
-        <BoardHeader title={boardTitle} />
+        <BoardHeader
+          title={boardTitle}
+          onRename={handleBoardRename}
+          onDelete={handleBoardDelete}
+        />
         <BoardToolbar
           query={query}
           activeFilter={activeFilter}
@@ -220,7 +296,12 @@ function Board() {
         )}
       </main>
       {selectedCard && (
-        <CardDetail card={selectedCard} onClose={() => setSelectedCard(null)} />
+        <CardDetail
+          card={selectedCard}
+          onClose={() => setSelectedCard(null)}
+          onEdit={() => void handleEditCard(selectedCard)}
+          onDelete={() => void handleDeleteCard(selectedCard)}
+        />
       )}
     </div>
   );

@@ -158,6 +158,41 @@ export async function getBoards(orgId: string) {
   return boards;
 }
 
+export async function createBoard(orgId: string, title: string) {
+  const response = await apiRequest<BoardSummary>("/api/v1/boards", {
+    method: "POST",
+    authenticated: true,
+    body: JSON.stringify({ orgId, title }),
+  });
+
+  if (!response.data) {
+    throw new Error("The server did not create the board");
+  }
+
+  return response.data;
+}
+
+export async function renameBoard(boardId: string, title: string) {
+  const response = await apiRequest<BoardSummary>(`/api/v1/boards/${boardId}`, {
+    method: "PUT",
+    authenticated: true,
+    body: JSON.stringify({ title }),
+  });
+
+  if (!response.data) {
+    throw new Error("The server did not rename the board");
+  }
+
+  return response.data;
+}
+
+export async function deleteBoard(boardId: string) {
+  await apiRequest(`/api/v1/boards/${boardId}`, {
+    method: "DELETE",
+    authenticated: true,
+  });
+}
+
 export async function getBoardSections(orgId: string) {
   const response = await apiRequest<
     Array<{
@@ -178,6 +213,20 @@ export async function getBoardSections(orgId: string) {
   return boards;
 }
 
+export async function createSection(boardId: string, title: string) {
+  const response = await apiRequest<SectionSummary>("/api/v1/section", {
+    method: "POST",
+    authenticated: true,
+    body: JSON.stringify({ boardId, title }),
+  });
+
+  if (!response.data) {
+    throw new Error("The server did not create the section");
+  }
+
+  return response.data;
+}
+
 export async function getIssuesForSection(sectionId: string) {
   const response = await apiRequest<IssueSummary[]>(
     `/api/v1/issue/${encodeURIComponent(sectionId)}`,
@@ -190,4 +239,39 @@ export async function getIssuesForSection(sectionId: string) {
   }
 
   return issues;
+}
+
+export async function createIssue(sectionId: string, title: string, description: string) {
+  const response = await apiRequest<IssueSummary>(`/api/v1/issue/${sectionId}`, {
+    method: "POST",
+    authenticated: true,
+    body: JSON.stringify({ title, description }),
+  });
+
+  if (!response.data) {
+    throw new Error("The server did not create the issue");
+  }
+
+  return response.data;
+}
+
+export async function updateIssue(issueId: string, title: string, description: string) {
+  const response = await apiRequest<IssueSummary>(`/api/v1/issue/${issueId}`, {
+    method: "PUT",
+    authenticated: true,
+    body: JSON.stringify({ title, description }),
+  });
+
+  if (!response.data) {
+    throw new Error("The server did not update the issue");
+  }
+
+  return response.data;
+}
+
+export async function deleteIssue(issueId: string) {
+  await apiRequest(`/api/v1/issue/${issueId}`, {
+    method: "DELETE",
+    authenticated: true,
+  });
 }

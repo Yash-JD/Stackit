@@ -247,3 +247,44 @@ When a board cannot be loaded or the backend rejects the request, the UI shows a
 ### Next phase
 
 Phase 6 adds board CRUD operations, including creating and editing sections and issues from the UI.
+
+## Phase 6: Board CRUD Operations
+
+### What changed
+
+- Wired board-level actions to the backend API: rename and delete board from the board header.
+- Added a `New board` action in the sidebar for creating a board in the selected workspace.
+- Added list creation from the board canvas using the backend `createSection` endpoint.
+- Added card creation, card editing, and card deletion by calling the issue endpoints from the board UI.
+- Reused the same async loading pattern after mutations so the board screen refreshes from the server immediately.
+
+### Concepts learned
+
+#### Mutating server data from the UI
+
+The board UI is no longer only reading data; it also triggers API requests to create, update, and delete records. Each mutation is followed by a refresh so the UI stays synchronized with the backend state.
+
+```ts
+await createSection(boardId, title.trim());
+await loadBoard();
+```
+
+#### Error handling for form flows
+
+Create and edit actions use `window.prompt()` for a quick focused interaction. When the API rejects the request, the component shows a board-level error message instead of silently leaving the screen stale.
+
+#### Optimistic state vs. server truth
+
+A real app should ideally keep the UI responsive with optimistic updates, but here the safe choice is to refresh from the server after each mutation. This keeps the local state consistent with the backend and makes the learning flow easier to reason about.
+
+### Important files
+
+- `apps/frontend/src/App.tsx`: board actions, refresh logic, and CRUD event handlers
+- `apps/frontend/src/components/Sidebar.tsx`: board creation and workspace selection
+- `apps/frontend/src/components/BoardTopbar.tsx`: rename/delete board controls
+- `apps/frontend/src/components/BoardCanvas.tsx`: list and card actions inside the board view
+- `apps/frontend/src/api.ts`: backend CRUD operations for boards, sections, and issues
+
+### Next phase
+
+Phase 7 focuses on drag-and-drop interactions and optimistic UI behavior while cards move between sections.

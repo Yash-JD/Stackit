@@ -345,6 +345,22 @@ button {
 .share-button:hover {
   background: rgba(118, 191, 170, 0.2);
 }
+.share-button.danger {
+  border-color: rgba(234, 122, 122, 0.35);
+  color: #f4c2c2;
+  background: rgba(157, 73, 73, 0.2);
+}
+.share-button.danger:hover {
+  background: rgba(157, 73, 73, 0.28);
+}
+.board-header-actions,
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
 .board-header {
   display: flex;
   align-items: end;

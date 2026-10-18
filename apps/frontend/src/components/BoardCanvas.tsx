@@ -137,9 +137,13 @@ function BoardColumnView({
 export function CardDetail({
   card,
   onClose,
+  onDelete,
+  onEdit,
 }: {
   card: Card;
   onClose: () => void;
+  onDelete?: () => void;
+  onEdit?: () => void;
 }) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -175,6 +179,20 @@ export function CardDetail({
             </p>
           </div>
         </div>
+        {(onEdit || onDelete) && (
+          <div className="detail-actions">
+            {onEdit && (
+              <button className="share-button" onClick={onEdit}>
+                Edit card
+              </button>
+            )}
+            {onDelete && (
+              <button className="share-button danger" onClick={onDelete}>
+                Delete card
+              </button>
+            )}
+          </div>
+        )}
       </aside>
     </div>
   );

@@ -24,7 +24,7 @@ export function BoardTopbar({
         <Menu size={19} />
       </button>
       <div className="breadcrumbs">
-        <button onClick={() => navigate(boardId ? `/board/${boardId}` : "/") }>
+        <button onClick={() => navigate(boardId ? `/board/${boardId}` : "/")}>
           Boards
         </button>
         <span>/</span>
@@ -48,7 +48,15 @@ export function BoardTopbar({
   );
 }
 
-export function BoardHeader({ title = "Board" }: { title?: string }) {
+export function BoardHeader({
+  title = "Board",
+  onRename,
+  onDelete,
+}: {
+  title?: string;
+  onRename?: () => void;
+  onDelete?: () => void;
+}) {
   return (
     <section className="board-header">
       <div>
@@ -58,9 +66,21 @@ export function BoardHeader({ title = "Board" }: { title?: string }) {
         <h1>{title}</h1>
         <p>Turn the next big idea into something people can use.</p>
       </div>
-      <button className="share-button">
-        <Users size={16} /> Share board
-      </button>
+      <div className="board-header-actions">
+        {onRename && (
+          <button className="share-button" onClick={onRename}>
+            <Users size={16} /> Rename board
+          </button>
+        )}
+        {onDelete && (
+          <button className="share-button danger" onClick={onDelete}>
+            Delete board
+          </button>
+        )}
+        <button className="share-button">
+          <Users size={16} /> Share board
+        </button>
+      </div>
     </section>
   );
 }

@@ -8,8 +8,8 @@ import {
   Sparkles,
   Users,
 } from "lucide-react";
-import { Link } from "react-router";
-import { getBoards, getOrganizations } from "../api";
+import { Link, useNavigate } from "react-router";
+import { createBoard, getBoards, getOrganizations } from "../api";
 import { useAuth } from "../auth";
 
 type SidebarProps = {
@@ -19,6 +19,7 @@ type SidebarProps = {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { logout } = useAuth();
+  const navigate = useNavigate();
   const [organizations, setOrganizations] = useState<
     Awaited<ReturnType<typeof getOrganizations>>
   >([]);
@@ -109,6 +110,27 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     (organization) => organization.id === selectedOrgId,
   );
 
+  const handleCreateBoard = async () => {
+    if (!selectedOrgId) {
+      setBoardsError("Select a workspace before creating a board.");
+      return;
+    }
+
+    const title = window.prompt("Board title");
+    if (!title?.trim()) return;
+
+    try {
+      const newBoard = await createBoard(selectedOrgId, title.trim());
+      setBoards((current) => [newBoard, ...current]);
+      navigate(`/board/${newBoard.id}`);
+      onClose();
+    } catch (error) {
+      setBoardsError(
+        error instanceof Error ? error.message : "Unable to create this board.",
+      );
+    }
+  };
+
   return (
     <aside className={`sidebar ${isOpen ? "sidebar-open" : ""}`}>
       <div className="brand-mark">
@@ -149,6 +171,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <button className="nav-item active">
           <LayoutGrid size={17} /> Boards{" "}
           <span className="nav-count">{boards.length}</span>
+        </button>
+        <button className="nav-item create-board-action" onClick={handleCreateBoard}>
+          <Sparkles size={17} /> New board
         </button>
         <button className="nav-item">
           <Users size={17} /> Members <span className="nav-count">8</span>
