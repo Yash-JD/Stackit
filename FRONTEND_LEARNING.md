@@ -340,6 +340,7 @@ Phase 8 extracts board and workspace data loading and mutation behavior into cus
 - Continued using the existing `useAuth` context hook for authentication state and sign-in behavior.
 - Moved board rename/delete actions to the board tiles on the Boards page and added board creation at the end of the board list.
 - Kept the sidebar and workspace board data mounted across board/index navigation to avoid reloading the sidebar list on each route change.
+- Added a collapsible sidebar with compact icon navigation and replaced the generic sparkle mark with a stacked-layer Stackit logo used on the sidebar and authentication screens.
 
 ### Concepts learned
 

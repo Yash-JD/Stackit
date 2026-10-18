@@ -6,7 +6,6 @@ import {
   MoreHorizontal,
   Plus,
   Settings,
-  Sparkles,
   Users,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router";
@@ -19,13 +18,21 @@ import {
   updateOrganization,
 } from "../api";
 import { useAuth } from "../auth";
+import { StackitLogo } from "./StackitLogo";
 
 type SidebarProps = {
   isOpen: boolean;
   onClose: () => void;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
 };
 
-export function Sidebar({ isOpen, onClose }: SidebarProps) {
+export function Sidebar({
+  isOpen,
+  onClose,
+  isCollapsed,
+  onToggleCollapse,
+}: SidebarProps) {
   const { logout } = useAuth();
   const navigate = useNavigate();
   const [organizations, setOrganizations] = useState<
@@ -279,8 +286,20 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   return (
     <aside className={`sidebar ${isOpen ? "sidebar-open" : ""}`}>
-      <div className="brand-mark">
-        <Sparkles size={17} /> <span>stackit</span>
+      <div className="brand-row">
+        <div className="brand-mark">
+          <StackitLogo className="stackit-logo" />
+          <span>Stackit</span>
+        </div>
+        <button
+          type="button"
+          className="sidebar-collapse-button"
+          onClick={onToggleCollapse}
+          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          <span aria-hidden="true">{isCollapsed ? "||>" : "<||"}</span>
+        </button>
       </div>
       <div className="workspace-switcher">
         <div className="workspace-avatar">
@@ -346,19 +365,28 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           className="nav-item active"
           type="button"
           onClick={() => navigate("/")}
+          aria-label="Boards"
+          title={isCollapsed ? "Boards" : undefined}
         >
-          <LayoutGrid size={17} /> Boards
+          <LayoutGrid size={17} /> <span>Boards</span>
         </button>
-        <button className="nav-item">
-          <Users size={17} /> Members <span className="nav-count">8</span>
+        <button
+          className="nav-item"
+          aria-label="Members"
+          title={isCollapsed ? "Members" : undefined}
+        >
+          <Users size={17} /> <span>Members</span>{" "}
+          <span className="nav-count">8</span>
         </button>
         <button
           className="nav-item"
           type="button"
           onClick={openOrganizationSettings}
           disabled={!selectedOrganization}
+          aria-label="Settings"
+          title={isCollapsed ? "Settings" : undefined}
         >
-          <Settings size={17} /> Settings
+          <Settings size={17} /> <span>Settings</span>
         </button>
         <p className="nav-label recent-label">Your boards</p>
         {isLoadingOrganizations || isLoadingBoards ? (
@@ -401,9 +429,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               key={board.id}
               to={`/board/${board.id}`}
               onClick={onClose}
+              title={isCollapsed ? board.title : undefined}
+              aria-label={board.title}
             >
               <span className={`recent-dot dot-${index % 3}`} />
-              {board.title}
+              <span className="recent-board-title">{board.title}</span>
             </Link>
           ))
         )}
@@ -415,12 +445,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <button
               type="button"
               className="recent-board recent-board-add"
+              aria-label="Add new board"
+              title={isCollapsed ? "Add new board" : undefined}
               onClick={() => {
                 setCreateBoardError("");
                 setShowCreateBoard(true);
               }}
             >
-              <span>Add new board</span>
+              <span className="recent-board-title">Add new board</span>
               <Plus size={15} aria-hidden="true" />
             </button>
           )}
@@ -662,7 +694,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       <div className="sidebar-footer">
         <button className="nav-item">
-          <CircleHelp size={17} /> Help center
+          <CircleHelp size={17} /> <span>Help center</span>
         </button>
         <button className="profile-row" onClick={logout}>
           <div className="profile-avatar">Y</div>
@@ -670,7 +702,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <strong>Yash</strong>
             <span>Log out</span>
           </div>
-          <MoreHorizontal size={17} />
+          <MoreHorizontal className="profile-more" size={17} />
         </button>
       </div>
     </aside>

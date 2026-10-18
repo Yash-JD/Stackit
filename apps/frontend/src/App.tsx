@@ -59,11 +59,21 @@ type WorkspaceLayoutContext = ReturnType<typeof useWorkspaceBoards> & {
 
 function WorkspaceLayout() {
   const [showSidebar, setShowSidebar] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const workspaceBoards = useWorkspaceBoards();
 
   return (
-    <div className="workspace-shell">
-      <Sidebar isOpen={showSidebar} onClose={() => setShowSidebar(false)} />
+    <div
+      className={`workspace-shell ${isSidebarCollapsed ? "sidebar-collapsed" : ""}`}
+    >
+      <Sidebar
+        isOpen={showSidebar}
+        onClose={() => setShowSidebar(false)}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() =>
+          setIsSidebarCollapsed((isCollapsed) => !isCollapsed)
+        }
+      />
       <Outlet
         context={{
           ...workspaceBoards,

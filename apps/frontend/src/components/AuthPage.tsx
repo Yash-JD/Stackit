@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from "react-router";
 import { signup } from "../api";
 import { useAuth } from "../auth";
 import { type ReactNode } from "react";
+import { StackitLogo } from "./StackitLogo";
 
 export function SigninPage() {
   const { isAuthenticated, signin } = useAuth();
@@ -178,7 +179,7 @@ function AuthLayout({
       </div>
       <section className="auth-card">
         <div className="auth-brand">
-          ✦ <span>stackit</span>
+          <StackitLogo className="stackit-logo" /> <span>Stackit</span>
         </div>
         <p className="auth-kicker">PRODUCT OPERATIONS</p>
         <h1>{title}</h1>
