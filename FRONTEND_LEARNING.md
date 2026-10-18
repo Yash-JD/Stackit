@@ -363,10 +363,43 @@ Each load receives a sequence number. If a later refresh starts first, results f
 - `apps/frontend/src/App.tsx`: route/page composition and dialog/view state
 - `apps/frontend/src/auth.tsx`: existing authentication context and `useAuth` hook
 
+## Phase 9: Organization Membership and Invitations
+
+### What changed
+
+- Added a People dialog to the selected workspace's Members action.
+- Added workspace member and pending-invitation lists, plus invitation creation.
+- Added an incoming-invitation list with accept and decline actions.
+- Added authenticated backend endpoints for listing incoming and workspace invitations and declining an invitation.
+- Recorded email delivery failures with a dedicated invitation status and broadcast them to connected workspace admins over the authenticated WebSocket channel.
+- Kept member listing, invitation listing, inviting, and member removal restricted to workspace admins.
+- Restricted invitation acceptance and decline to the invited email address.
+- Workspace membership grants access across that workspace's boards; the current data model does not support board-only membership.
+
+### Concepts learned
+
+#### Settling independent requests
+
+The dialog loads members, workspace invitations, and invitations for the signed-in user independently with `Promise.allSettled`. An admin-only request failure therefore does not hide incoming invitations, and each failed request is reported.
+
+#### Authorization at the API boundary
+
+Hiding admin actions in the UI is not sufficient. The backend checks the current user's workspace role before returning member/invitation data or allowing membership changes, and checks the invitation recipient before accept or decline.
+
+### Important files
+
+- `apps/frontend/src/components/OrganizationMembersDialog.tsx`: people, invitation, and membership UI
+- `apps/frontend/src/components/Sidebar.tsx`: selected workspace Members action
+- `apps/frontend/src/api.ts`: typed membership and invitation requests
+- `apps/backend/src/orgMember.ts`: membership and invitation routes
+- `apps/backend/helper/email.ts`: propagate invite email delivery errors to the invitation route
+- `apps/websocket/index.ts`: authenticated workspace-admin invitation failure notifications
+- `packages/db/prisma/schema.prisma`: invitation delivery status
+- `apps/frontend/src/index.css`: People dialog styling
+
 ### Remaining phases
 
-- **Phase 9 — Organization and board membership:** invite people, accept invitations, view members and pending invites, and remove members.
-- **Phase 10 — Roles and permissions:** define roles and enforce access rules in the frontend and backend.
+- **Phase 10 — Roles and permissions:** define roles and enforce access rules consistently in the frontend and backend.
 - **Phase 11 — Project collaboration tools:** add comments, activity history, and task workflow features such as due dates and labels.
 - **Phase 12 — Real-time collaboration:** live board updates and presence for multiple users.
 - **Phase 13 — Quality and polish:** automated tests, accessibility, responsive behavior, and consistent loading/empty/error states.

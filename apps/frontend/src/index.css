@@ -392,6 +392,146 @@ button {
   background: #1b292d;
   box-shadow: 0 28px 90px rgba(0, 0, 0, 0.32);
 }
+.members-dialog {
+  width: min(680px, 100%);
+  max-height: min(88vh, 850px);
+  overflow-y: auto;
+}
+.members-dialog > .sidebar-form-header > div {
+  display: grid;
+  gap: 4px;
+}
+.members-dialog > .sidebar-form-header p {
+  margin: 0;
+  color: #89999b;
+  font-size: 12px;
+}
+.members-section {
+  display: grid;
+  gap: 10px;
+  margin-top: 22px;
+}
+.members-section h4 {
+  margin: 0;
+  color: #dce9e5;
+  font-size: 13px;
+}
+.member-invite-form {
+  display: flex;
+  gap: 9px;
+}
+.member-invite-form input {
+  min-width: 0;
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: #edf7f3;
+  background: rgba(255, 255, 255, 0.045);
+  font-size: 12px;
+}
+.member-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.member-row,
+.incoming-invitation {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.025);
+}
+.member-avatar {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  color: #17302c;
+  background: #a8dfd1;
+  font-size: 12px;
+  font-weight: 800;
+}
+.member-email {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  color: #dce8e5;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.member-role {
+  padding: 4px 7px;
+  border-radius: 6px;
+  color: #a5b7b3;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 10px;
+  text-transform: capitalize;
+}
+.member-confirm-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+.text-button {
+  padding: 4px;
+  border: 0;
+  color: #9fb3af;
+  background: transparent;
+  font-size: 11px;
+}
+.text-button:hover {
+  color: #e3f2ed;
+}
+.text-button.danger-text {
+  color: #e7a6a0;
+}
+.text-button.danger-text:hover {
+  color: #ffbeb6;
+}
+.members-empty,
+.members-error {
+  margin: 0;
+  color: #89999b;
+  font-size: 12px;
+}
+.members-error {
+  margin-top: 10px;
+  overflow-wrap: anywhere;
+}
+.member-success {
+  margin: 0;
+  color: #a8dfd1;
+  font-size: 12px;
+}
+.incoming-invitation {
+  justify-content: space-between;
+}
+.incoming-invitation > div:first-child {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+.incoming-invitation strong {
+  overflow: hidden;
+  color: #dce8e5;
+  font-size: 12px;
+  text-overflow: ellipsis;
+}
+.incoming-invitation span {
+  color: #89999b;
+  font-size: 11px;
+}
 .dialog-description {
   margin: 0;
   color: #a5b4b3;

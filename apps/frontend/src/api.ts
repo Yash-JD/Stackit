@@ -37,6 +37,28 @@ export type IssueSummary = {
   isDeleted: boolean;
 };
 
+export type OrganizationMember = {
+  userId: string;
+  orgId: string;
+  role: "admin" | "member";
+  user: {
+    id: string;
+    email: string;
+    profilePhoto: string | null;
+  };
+};
+
+export type OrganizationInvitation = {
+  id: string;
+  email: string;
+  orgId: string;
+  role: "admin" | "member";
+  status: "PENDING" | "ACCEPTED" | "REJECTED" | "FAILED";
+  createdAt: string;
+  org?: { id: string; name: string };
+  inviter?: { email: string };
+};
+
 type ApiRequestOptions = RequestInit & {
   authenticated?: boolean;
 };
@@ -56,8 +78,11 @@ export async function apiRequest<T = unknown>(
   path: string,
   options: ApiRequestOptions = {},
 ): Promise<ApiResponse<T>> {
-  const { authenticated = false, headers: requestHeaders, ...requestOptions } =
-    options;
+  const {
+    authenticated = false,
+    headers: requestHeaders,
+    ...requestOptions
+  } = options;
   const headers = new Headers(requestHeaders);
   const isFormData =
     typeof FormData !== "undefined" && requestOptions.body instanceof FormData;
@@ -142,6 +167,91 @@ export async function getOrganizations() {
   return memberships
     .map((membership) => membership.organization)
     .filter((organization) => organization && !organization.isDeleted);
+}
+
+export async function getOrganizationMembers(orgId: string) {
+  const response = await apiRequest<{
+    membership: OrganizationMember[];
+  }>(`/api/v1/membership/${encodeURIComponent(orgId)}`, {
+    authenticated: true,
+  });
+  const members = response.data?.membership;
+
+  if (!Array.isArray(members)) {
+    throw new Error("The server returned an invalid members response");
+  }
+
+  return members;
+}
+
+export async function getOrganizationInvitations(orgId: string) {
+  const response = await apiRequest<{
+    invitations: OrganizationInvitation[];
+  }>(`/api/v1/invitation/organization/${encodeURIComponent(orgId)}`, {
+    authenticated: true,
+  });
+  const invitations = response.data?.invitations;
+
+  if (!Array.isArray(invitations)) {
+    throw new Error("The server returned an invalid invitations response");
+  }
+
+  return invitations;
+}
+
+export async function getPendingInvitations() {
+  const response = await apiRequest<{
+    invitations: OrganizationInvitation[];
+  }>("/api/v1/invitation/pending", { authenticated: true });
+  const invitations = response.data?.invitations;
+
+  if (!Array.isArray(invitations)) {
+    throw new Error("The server returned an invalid invitations response");
+  }
+
+  return invitations;
+}
+
+export async function inviteOrganizationMember(orgId: string, email: string) {
+  const response = await apiRequest<{
+    invitationId: string;
+    emailSent: boolean;
+  }>("/api/v1/invite", {
+    method: "POST",
+    authenticated: true,
+    body: JSON.stringify({ orgId, email }),
+  });
+
+  if (
+    !response.data ||
+    typeof response.data.invitationId !== "string" ||
+    typeof response.data.emailSent !== "boolean"
+  ) {
+    throw new Error("The server returned an invalid invitation response");
+  }
+
+  return response.data;
+}
+
+export async function acceptInvitation(invitationId: string) {
+  await apiRequest(`/api/v1/accept/${encodeURIComponent(invitationId)}`, {
+    method: "POST",
+    authenticated: true,
+  });
+}
+
+export async function rejectInvitation(invitationId: string) {
+  await apiRequest(`/api/v1/reject/${encodeURIComponent(invitationId)}`, {
+    method: "POST",
+    authenticated: true,
+  });
+}
+
+export async function removeOrganizationMember(userId: string, orgId: string) {
+  await apiRequest(
+    `/api/v1/membership/${encodeURIComponent(userId)}/${encodeURIComponent(orgId)}`,
+    { method: "DELETE", authenticated: true },
+  );
 }
 
 export async function createOrganization(
@@ -292,12 +402,19 @@ export async function getIssuesForSection(sectionId: string) {
   return issues;
 }
 
-export async function createIssue(sectionId: string, title: string, description: string) {
-  const response = await apiRequest<IssueSummary>(`/api/v1/issue/${sectionId}`, {
-    method: "POST",
-    authenticated: true,
-    body: JSON.stringify({ title, description }),
-  });
+export async function createIssue(
+  sectionId: string,
+  title: string,
+  description: string,
+) {
+  const response = await apiRequest<IssueSummary>(
+    `/api/v1/issue/${sectionId}`,
+    {
+      method: "POST",
+      authenticated: true,
+      body: JSON.stringify({ title, description }),
+    },
+  );
 
   if (!response.data) {
     throw new Error("The server did not create the issue");
@@ -306,7 +423,11 @@ export async function createIssue(sectionId: string, title: string, description:
   return response.data;
 }
 
-export async function updateIssue(issueId: string, title: string, description: string) {
+export async function updateIssue(
+  issueId: string,
+  title: string,
+  description: string,
+) {
   const response = await apiRequest<IssueSummary>(`/api/v1/issue/${issueId}`, {
     method: "PUT",
     authenticated: true,

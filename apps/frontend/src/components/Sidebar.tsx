@@ -19,6 +19,7 @@ import {
 } from "../api";
 import { useAuth } from "../auth";
 import { StackitLogo } from "./StackitLogo";
+import { OrganizationMembersDialog } from "./OrganizationMembersDialog";
 
 type SidebarProps = {
   isOpen: boolean;
@@ -70,6 +71,7 @@ export function Sidebar({
   const [isDeletingOrganization, setIsDeletingOrganization] = useState(false);
   const [confirmOrganizationDelete, setConfirmOrganizationDelete] =
     useState(false);
+  const [showMembersDialog, setShowMembersDialog] = useState(false);
 
   useEffect(() => {
     let isCurrent = true;
@@ -372,6 +374,8 @@ export function Sidebar({
         </button>
         <button
           className="nav-item"
+          type="button"
+          onClick={() => setShowMembersDialog(true)}
           aria-label="Members"
           title={isCollapsed ? "Members" : undefined}
         >
@@ -457,6 +461,13 @@ export function Sidebar({
             </button>
           )}
       </nav>
+      {showMembersDialog && selectedOrganization && (
+        <OrganizationMembersDialog
+          organizationId={selectedOrganization.id}
+          organizationName={selectedOrganization.name}
+          onClose={() => setShowMembersDialog(false)}
+        />
+      )}
       {showCreateBoard && (
         <div
           className="modal-backdrop sidebar-modal-backdrop"
