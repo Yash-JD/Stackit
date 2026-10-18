@@ -62,7 +62,7 @@ router.post(
     });
     try {
       await sendInviteEmail(
-        `Admin <${org?.name || "admin"}@stackit.com>`,
+        `${org?.name || "Stackit"} <onboarding@resend.dev>`,
         data.email,
         org?.name ?? "an organization",
         invitation.id,
