@@ -8,6 +8,19 @@ export type ApiResponse<T = unknown> = {
   error?: string;
 };
 
+export type Organization = {
+  id: string;
+  name: string;
+  description: string;
+  isDeleted: boolean;
+};
+
+export type BoardSummary = {
+  id: string;
+  title: string;
+  orgId: string;
+};
+
 type ApiRequestOptions = RequestInit & {
   authenticated?: boolean;
 };
@@ -98,4 +111,33 @@ export function signin(data: { email: string; password: string }) {
     method: "POST",
     body: JSON.stringify(data),
   });
+}
+
+export async function getOrganizations() {
+  const response = await apiRequest<{
+    membership: Array<{ organization: Organization }>;
+  }>("/api/v1/organization", { authenticated: true });
+  const memberships = response.data?.membership;
+
+  if (!Array.isArray(memberships)) {
+    throw new Error("The server returned an invalid organizations response");
+  }
+
+  return memberships
+    .map((membership) => membership.organization)
+    .filter((organization) => organization && !organization.isDeleted);
+}
+
+export async function getBoards(orgId: string) {
+  const response = await apiRequest<{ board: BoardSummary[] }>(
+    `/api/v1/boards?orgId=${encodeURIComponent(orgId)}`,
+    { authenticated: true },
+  );
+  const boards = response.data?.board;
+
+  if (!Array.isArray(boards)) {
+    throw new Error("The server returned an invalid boards response");
+  }
+
+  return boards;
 }

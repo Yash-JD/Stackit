@@ -158,3 +158,45 @@ The helper adds a JSON content type when sending a JSON body. For protected requ
 ### Next phase
 
 Phase 4 connects the sidebar and board list to the organization and board APIs, with loading, error, and empty states.
+
+## Phase 4: Organization and Board Data
+
+### What changed
+
+- Added typed API functions for the signed-in user's organizations and the boards in a selected organization.
+- Replaced the sidebar's hardcoded workspace and recent-board names with API data.
+- Added a workspace selector and linked each board to its board route.
+- Added loading, retryable error, and empty states for organization and board requests.
+- Ignored organizations marked as deleted by the API.
+
+### Concepts learned
+
+#### `useEffect`
+
+`useEffect` runs side effects after React renders. The sidebar uses it to load organizations when it mounts, and to load boards when the selected organization changes.
+
+```tsx
+useEffect(() => {
+  // Load data for the selected organization.
+}, [selectedOrgId]);
+```
+
+The dependency array tells React when the effect should run again. A cleanup function marks an older request as stale so its result cannot overwrite data after a workspace switch or unmount.
+
+#### Loading, error, and empty states
+
+These states represent different outcomes. Loading indicates a request is in progress; an error provides a retry action; and an empty state means a successful request returned no organizations or boards.
+
+#### Fetching on selection changes
+
+The organization list is loaded first. Selecting an organization updates `selectedOrgId`, which triggers a second effect to fetch only that organization's boards.
+
+### Important files
+
+- `apps/frontend/src/api.ts`: typed organization and board API functions
+- `apps/frontend/src/components/Sidebar.tsx`: data loading, selection, and request states
+- `apps/frontend/src/index.css`: workspace selector and sidebar status styling
+
+### Next phase
+
+Phase 5 replaces `initialColumns` with the selected board's real sections and issues.

@@ -80,6 +80,35 @@ button {
   gap: 2px;
   flex: 1;
 }
+.workspace-picker {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+.workspace-switcher .workspace-picker {
+  display: flex;
+}
+.workspace-picker select {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  color: #edf0f2;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 700;
+}
+.workspace-picker select option {
+  color: #edf0f2;
+  background: #101619;
+}
+.workspace-picker > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .workspace-switcher strong,
 .profile-row strong {
   font-size: 12px;
@@ -137,6 +166,29 @@ button {
   padding: 8px 10px;
   color: #a3adae;
   font-size: 12px;
+  text-decoration: none;
+}
+.sidebar-state {
+  margin: 0;
+  padding: 8px 10px;
+  color: #89989b;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.sidebar-state-error {
+  display: grid;
+  gap: 6px;
+  color: #f0b7a9;
+  overflow-wrap: anywhere;
+}
+.sidebar-state-error button {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  color: #c9eee5;
+  background: transparent;
+  font-size: 11px;
+  text-decoration: underline;
 }
 .recent-dot {
   width: 8px;
