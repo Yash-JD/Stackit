@@ -299,7 +299,7 @@ Phase 7 adds drag-and-drop interactions and optimistic UI behavior while cards m
 - Added visible feedback for the card being dragged, the destination section, and a move in progress.
 - Optimistically moved the card to the destination section before the API request completes.
 - Connected drops to the backend issue-move endpoint.
-- Restored a failed card move to its original section and position and displayed the API error.
+- Restored a failed card move to its original section and position and displayed the API error. The optimistic move logic now lives in `useBoard`.
 - Limited this phase to moving cards between sections. The current backend move endpoint does not persist ordering within a section.
 
 ### Concepts learned
@@ -319,10 +319,52 @@ If the move request fails, the card is removed from its optimistic location and 
 ### Important files
 
 - `apps/frontend/src/components/BoardCanvas.tsx`: draggable cards, section drop targets, and interaction feedback
-- `apps/frontend/src/App.tsx`: optimistic board update and rollback behavior
+- `apps/frontend/src/hooks/useBoard.ts`: optimistic board update and rollback behavior
 - `apps/frontend/src/api.ts`: API helper for the backend move endpoint
 - `apps/frontend/src/index.css`: drag, drop-target, pending, and error styles
 
 ### Next phase
 
-Phase 8 extracts repeated data and mutation logic into custom hooks such as `useAuth`, `useBoards`, and `useBoard`.
+Phase 8 extracts board and workspace data loading and mutation behavior into custom hooks.
+
+## Phase 8: Custom Hooks and Frontend Architecture
+
+### What changed
+
+- Added `useBoard` to load board sections and cards, expose board metadata, rename the board, create sections, and manage optimistic card moves with rollback.
+- Added `useWorkspaceBoards` to load workspace board groups, calculate the board total, and refresh when workspace or board change events occur.
+- Kept page components responsible for rendering and dialog state while moving reusable server-state behavior out of `App`.
+- Added request sequencing so older overlapping loads cannot overwrite newer results.
+- Continued using the existing `useAuth` context hook for authentication state and sign-in behavior.
+
+### Concepts learned
+
+#### Custom hooks
+
+A custom hook groups React state and behavior that belongs together. `useBoard` owns board data and its loading/mutation state, while the board page consumes that state to render components.
+
+#### Separating server state from view state
+
+Board data, loading feedback, and mutation errors are managed by hooks. Search, filters, selected cards, and open dialogs remain in the page because they describe the current view rather than server data.
+
+#### Keeping asynchronous state current
+
+Each load receives a sequence number. If a later refresh starts first, results from the older request are ignored instead of replacing newer data.
+
+### Important files
+
+- `apps/frontend/src/hooks/useBoard.ts`: board loading, section/card mapping, rename/create-section actions, and optimistic card moves
+- `apps/frontend/src/hooks/useWorkspaceBoards.ts`: workspace and board loading, refresh events, and board count
+- `apps/frontend/src/App.tsx`: route/page composition and dialog/view state
+- `apps/frontend/src/auth.tsx`: existing authentication context and `useAuth` hook
+
+### Remaining phases
+
+- **Phase 9 — Organization and board membership:** invite people, accept invitations, view members and pending invites, and remove members.
+- **Phase 10 — Roles and permissions:** define roles and enforce access rules in the frontend and backend.
+- **Phase 11 — Project collaboration tools:** add comments, activity history, and task workflow features such as due dates and labels.
+- **Phase 12 — Real-time collaboration:** live board updates and presence for multiple users.
+- **Phase 13 — Quality and polish:** automated tests, accessibility, responsive behavior, and consistent loading/empty/error states.
+- **Phase 14 — Production readiness:** environment configuration, deployment/build setup, and production checks.
+
+Drag-and-drop currently persists the destination section but not a card's order within a section. Persisted ordering can be added when the backend supports it.

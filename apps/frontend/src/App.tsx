@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import "./index.css";
 import { Menu } from "lucide-react";
 import {
@@ -13,25 +13,17 @@ import {
 import { useAuth } from "./auth";
 import {
   createBoard,
-  createIssue,
-  createSection,
   deleteBoard,
-  deleteIssue,
-  getBoards,
-  getBoardSections,
-  getIssuesForSection,
-  getOrganizations,
-  moveIssue,
-  renameBoard,
-  updateIssue,
 } from "./api";
 import { SigninPage, SignupPage } from "./components/AuthPage";
 import { BoardCanvas, CardDetail } from "./components/BoardCanvas";
 import { BoardHeader, BoardTopbar } from "./components/BoardTopbar";
 import { BoardToolbar } from "./components/BoardToolbar";
 import { Sidebar } from "./components/Sidebar";
-import type { BoardColumn, Card, CardLabel } from "./types";
+import type { Card, CardLabel } from "./types";
 import type { BoardSummary, Organization } from "./api";
+import { useBoard } from "./hooks/useBoard";
+import { useWorkspaceBoards } from "./hooks/useWorkspaceBoards";
 
 type BoardDialog =
   | { type: "rename-board" }
@@ -182,56 +174,8 @@ function CreateBoardDialog({
 function WorkspaceHome() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [showCreateBoard, setShowCreateBoard] = useState(false);
-  const [workspaces, setWorkspaces] = useState<
-    Array<{ organization: Organization; boards: BoardSummary[] }>
-  >([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [retry, setRetry] = useState(0);
-
-  const loadWorkspaceBoards = useCallback(async () => {
-    setIsLoading(true);
-    setError("");
-    try {
-      const organizations = await getOrganizations();
-      const groups = await Promise.all(
-        organizations.map(async (organization) => ({
-          organization,
-          boards: await getBoards(organization.id),
-        })),
-      );
-      setWorkspaces(groups);
-    } catch (loadError) {
-      setError(
-        loadError instanceof Error
-          ? loadError.message
-          : "Unable to load workspace boards.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadWorkspaceBoards();
-  }, [loadWorkspaceBoards, retry]);
-
-  useEffect(() => {
-    const refreshWorkspaces = () => {
-      void loadWorkspaceBoards();
-    };
-    window.addEventListener("stackit:organizations-changed", refreshWorkspaces);
-    return () =>
-      window.removeEventListener(
-        "stackit:organizations-changed",
-        refreshWorkspaces,
-      );
-  }, [loadWorkspaceBoards]);
-
-  const boardCount = workspaces.reduce(
-    (total, workspace) => total + workspace.boards.length,
-    0,
-  );
+  const { workspaces, boardCount, isLoading, error, refresh } =
+    useWorkspaceBoards();
 
   return (
     <div className="workspace-shell">
@@ -276,7 +220,7 @@ function WorkspaceHome() {
             <p>{error}</p>
             <button
               className="secondary-button"
-              onClick={() => setRetry((current) => current + 1)}
+              onClick={() => void refresh()}
             >
               Retry
             </button>
@@ -338,7 +282,6 @@ function WorkspaceHome() {
           onCreated={() => {
             setShowCreateBoard(false);
             window.dispatchEvent(new Event("stackit:boards-changed"));
-            void loadWorkspaceBoards();
           }}
         />
       )}
@@ -349,110 +292,33 @@ function WorkspaceHome() {
 function Board() {
   const navigate = useNavigate();
   const { boardId } = useParams();
-  const [columns, setColumns] = useState<BoardColumn[]>([]);
-  const [boardTitle, setBoardTitle] = useState("Board");
-  const [boardOrganizationId, setBoardOrganizationId] = useState("");
+  const {
+    columns,
+    title: boardTitle,
+    organizationId: boardOrganizationId,
+    isLoading: isLoadingBoard,
+    error: boardError,
+    pendingMoveIds,
+    moveError,
+    refresh: loadBoard,
+    rename: renameBoardTitle,
+    addSection,
+    createCard,
+    updateCard,
+    deleteCard,
+    moveCard,
+  } = useBoard(boardId);
   const [query, setQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<"all" | CardLabel>("all");
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
   const [showAddList, setShowAddList] = useState(false);
   const [newListTitle, setNewListTitle] = useState("");
-  const [isLoadingBoard, setIsLoadingBoard] = useState(true);
-  const [boardError, setBoardError] = useState("");
   const [dialog, setDialog] = useState<BoardDialog | null>(null);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogDescription, setDialogDescription] = useState("");
   const [dialogError, setDialogError] = useState("");
   const [isSubmittingDialog, setIsSubmittingDialog] = useState(false);
-  const [pendingMoveIds, setPendingMoveIds] = useState<string[]>([]);
-  const [moveError, setMoveError] = useState("");
-
-  const loadBoard = useCallback(async () => {
-    if (!boardId) return;
-
-    setIsLoadingBoard(true);
-    setBoardError("");
-
-    try {
-      const organizations = await getOrganizations();
-
-      for (const organization of organizations) {
-        const sectionsResponse = await getBoardSections(organization.id);
-        const matchingBoard = sectionsResponse.find((board) => board.id === boardId);
-
-        if (!matchingBoard) continue;
-
-        const sectionColors = [
-          "#8d9baa",
-          "#edb44f",
-          "#6ec5b8",
-          "#88a9df",
-        ];
-        const labels: CardLabel[] = ["Research", "Build", "Design"];
-
-        const nextColumns = await Promise.all(
-          matchingBoard.sections
-            .filter((section) => !section.isDeleted)
-            .map(async (section, index) => {
-              const issues = await getIssuesForSection(section.id);
-              const color =
-                sectionColors[index % sectionColors.length] ?? "#8d9baa";
-
-              return {
-                id: section.id,
-                title: section.title,
-                color,
-                cards: issues
-                  .filter((issue) => !issue.isDeleted)
-                  .map((issue, issueIndex) => {
-                    const label =
-                      labels[issueIndex % labels.length] ?? "Build";
-
-                    return {
-                      id: issue.id,
-                      title: issue.title,
-                      label,
-                      description:
-                        issue.description || "No description added yet.",
-                    };
-                  }),
-              } satisfies BoardColumn;
-            }),
-        );
-
-        setBoardTitle(matchingBoard.title);
-        setBoardOrganizationId(matchingBoard.orgId);
-        setColumns(nextColumns);
-        return;
-      }
-
-      setColumns([]);
-      setBoardTitle("Board");
-      setBoardOrganizationId("");
-      setBoardError("This board could not be found.");
-    } catch (error) {
-      setColumns([]);
-      setBoardTitle("Board");
-      setBoardOrganizationId("");
-      setBoardError(
-        error instanceof Error ? error.message : "Unable to load board data.",
-      );
-    } finally {
-      setIsLoadingBoard(false);
-    }
-  }, [boardId]);
-
-  useEffect(() => {
-    if (!boardId) {
-      setBoardError("This board could not be found.");
-      setIsLoadingBoard(false);
-      return;
-    }
-
-    void loadBoard();
-  }, [boardId, loadBoard]);
-
   const visibleColumns = useMemo(
     () =>
       columns.map((column) => ({
@@ -468,77 +334,6 @@ function Board() {
       })),
     [activeFilter, columns, query],
   );
-
-  const handleMoveCard = async (
-    cardId: string,
-    sourceColumnId: string,
-    targetColumnId: string,
-  ) => {
-    if (
-      sourceColumnId === targetColumnId ||
-      pendingMoveIds.includes(cardId)
-    ) {
-      return;
-    }
-
-    const sourceColumn = columns.find(
-      (column) => column.id === sourceColumnId,
-    );
-    const sourceIndex =
-      sourceColumn?.cards.findIndex((card) => card.id === cardId) ?? -1;
-    const card = sourceIndex >= 0 ? sourceColumn?.cards[sourceIndex] : undefined;
-
-    if (!card || !columns.some((column) => column.id === targetColumnId)) return;
-
-    setMoveError("");
-    setPendingMoveIds((current) => [...current, cardId]);
-    setColumns((current) =>
-      current.map((column) => {
-        if (column.id === sourceColumnId) {
-          return {
-            ...column,
-            cards: column.cards.filter((item) => item.id !== cardId),
-          };
-        }
-        if (column.id === targetColumnId) {
-          return { ...column, cards: [...column.cards, card] };
-        }
-        return column;
-      }),
-    );
-
-    try {
-      await moveIssue(cardId, targetColumnId);
-    } catch (error) {
-      setColumns((current) => {
-        let latestCard = card;
-        const columnsWithoutCard = current.map((column) => {
-          const currentCard = column.cards.find((item) => item.id === cardId);
-          if (currentCard) latestCard = currentCard;
-          return {
-            ...column,
-            cards: column.cards.filter((item) => item.id !== cardId),
-          };
-        });
-
-        return columnsWithoutCard.map((column) => {
-          if (column.id !== sourceColumnId) return column;
-          const cards = [...column.cards];
-          cards.splice(Math.min(sourceIndex, cards.length), 0, latestCard);
-          return { ...column, cards };
-        });
-      });
-      setMoveError(
-        error instanceof Error
-          ? `Unable to move card: ${error.message}`
-          : "Unable to move card. The card was returned to its original list.",
-      );
-    } finally {
-      setPendingMoveIds((current) =>
-        current.filter((pendingId) => pendingId !== cardId),
-      );
-    }
-  };
 
   const openDialog = (nextDialog: BoardDialog) => {
     setDialog(nextDialog);
@@ -577,8 +372,7 @@ function Board() {
       switch (dialog.type) {
         case "rename-board":
           if (!boardId) return;
-          await renameBoard(boardId, title);
-          setBoardTitle(title);
+          await renameBoardTitle(title);
           break;
         case "create-board": {
           if (!boardOrganizationId) {
@@ -592,14 +386,14 @@ function Board() {
           return;
         }
         case "create-card":
-          await createIssue(
+          await createCard(
             dialog.columnId,
             title,
             dialogDescription.trim() || "No description added yet.",
           );
           break;
         case "edit-card":
-          await updateIssue(
+          await updateCard(
             dialog.card.id,
             title,
             dialogDescription.trim() || "No description added yet.",
@@ -631,10 +425,9 @@ function Board() {
         setDialog(null);
         navigate("/", { replace: true });
       } else if (dialog.type === "delete-card") {
-        await deleteIssue(dialog.card.id);
+        await deleteCard(dialog.card.id);
         setDialog(null);
         setSelectedCard(null);
-        await loadBoard();
       }
     } catch (error) {
       setDialogError(
@@ -652,15 +445,10 @@ function Board() {
       return;
     }
 
-    try {
-      await createSection(boardId, newListTitle.trim());
+    const wasCreated = await addSection(newListTitle.trim());
+    if (wasCreated) {
       setNewListTitle("");
       setShowAddList(false);
-      await loadBoard();
-    } catch (error) {
-      setBoardError(
-        error instanceof Error ? error.message : "Unable to create this list.",
-      );
     }
   };
 
@@ -695,7 +483,7 @@ function Board() {
           <BoardCanvas
             columns={visibleColumns}
             onMoveCard={(cardId, sourceColumnId, targetColumnId) => {
-              void handleMoveCard(cardId, sourceColumnId, targetColumnId);
+              void moveCard(cardId, sourceColumnId, targetColumnId);
             }}
             pendingMoveIds={pendingMoveIds}
             moveError={moveError}
