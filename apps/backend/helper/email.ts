@@ -14,7 +14,7 @@ export async function sendInviteEmail(
   inviteCode: string,
 ) {
   try {
-    const { data, error } = await resend.emails.send({
+    const { error } = await resend.emails.send({
       from,
       to,
       subject: `You've been invited to join ${orgName}`,
@@ -22,10 +22,11 @@ export async function sendInviteEmail(
     });
 
     if (error) {
-      console.error("Failed to send invite email:", error);
+      throw error;
     }
-  } catch (e) {
-    console.error("Failed to send invite email:", e);
+  } catch (error) {
+    console.error("Failed to send invite email:", error);
+    throw error;
   }
 }
 

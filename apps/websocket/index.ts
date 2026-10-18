@@ -35,6 +35,11 @@ class WsManager {
   // A socket can be connected to one board at a time.
   private joinedRooms = new Map<WebSocket, string>();
 
+  private organizations: Record<string, { id: string; socket: WebSocket }[]> =
+    {};
+
+  private joinedOrganizations = new Map<WebSocket, Set<string>>();
+
   private constructor() {
     this.wss = new WebSocketServer({
       port: WS_PORT,
@@ -122,7 +127,7 @@ class WsManager {
             isDeleted: false,
             organization: {
               isDeleted: false,
-              membership: {
+              memberships: {
                 some: {
                   userId: payload.id,
                   isDeleted: false,
@@ -191,6 +196,111 @@ class WsManager {
               .map((user) => user.id),
           }),
         );
+      } else if (parsedData.type === "join_organization") {
+        const organizationId = parsedData.organizationId;
+        if (typeof organizationId !== "string") {
+          return;
+        }
+
+        const membership = await prisma.membership.findFirst({
+          where: {
+            userId: payload.id,
+            orgId: organizationId,
+            role: "admin",
+            isDeleted: false,
+            organization: { isDeleted: false },
+          },
+        });
+        if (!membership) {
+          socket.send(JSON.stringify({ type: "organization_access_denied" }));
+          return;
+        }
+
+        let joinedOrganizations = this.joinedOrganizations.get(socket);
+        if (!joinedOrganizations) {
+          joinedOrganizations = new Set();
+          this.joinedOrganizations.set(socket, joinedOrganizations);
+        }
+
+        if (joinedOrganizations.has(organizationId)) {
+          return;
+        }
+        joinedOrganizations.add(organizationId);
+
+        this.organizations[organizationId] ??= [];
+        this.organizations[organizationId].push({
+          id: payload.id,
+          socket,
+        });
+        socket.send(
+          JSON.stringify({
+            type: "organization_joined",
+            organizationId,
+          }),
+        );
+      } else if (parsedData.type === "invitation_failed") {
+        const { invitationId, organizationId } = parsedData;
+        if (
+          typeof invitationId !== "string" ||
+          typeof organizationId !== "string" ||
+          !this.joinedOrganizations.get(socket)?.has(organizationId)
+        ) {
+          return;
+        }
+
+        const [invitation, membership, adminMemberships] = await Promise.all([
+          prisma.invitation.findFirst({
+            where: {
+              id: invitationId,
+              orgId: organizationId,
+              status: "FAILED",
+              isDeleted: false,
+            },
+            select: { id: true },
+          }),
+          prisma.membership.findFirst({
+            where: {
+              userId: payload.id,
+              orgId: organizationId,
+              role: "admin",
+              isDeleted: false,
+              organization: { isDeleted: false },
+            },
+            select: { userId: true },
+          }),
+          prisma.membership.findMany({
+            where: {
+              orgId: organizationId,
+              role: "admin",
+              isDeleted: false,
+              organization: { isDeleted: false },
+            },
+            select: { userId: true },
+          }),
+        ]);
+
+        if (!invitation || !membership) {
+          return;
+        }
+
+        const activeAdminIds = new Set(
+          adminMemberships.map((admin) => admin.userId),
+        );
+        this.organizations[organizationId]
+          ?.filter(
+            (member) =>
+              activeAdminIds.has(member.id) &&
+              member.socket.readyState === WebSocket.OPEN,
+          )
+          .forEach((member) => {
+            member.socket.send(
+              JSON.stringify({
+                type: "invitation_failed",
+                invitationId,
+                organizationId,
+              }),
+            );
+          });
       } else if (parsedData.type === "issue_moved") {
         // Relay a card movement to everyone else viewing this board.
         const boardId = this.joinedRooms.get(socket);
@@ -236,6 +346,20 @@ class WsManager {
   }
 
   private handleDisconnect(socket: WebSocket) {
+    const joinedOrganizations = this.joinedOrganizations.get(socket);
+    joinedOrganizations?.forEach((organizationId) => {
+      const members = this.organizations[organizationId];
+      if (!members) return;
+
+      this.organizations[organizationId] = members.filter(
+        (member) => member.socket !== socket,
+      );
+      if (this.organizations[organizationId].length === 0) {
+        delete this.organizations[organizationId];
+      }
+    });
+    this.joinedOrganizations.delete(socket);
+
     // Find the room this connection belonged to.
     const joinedRoom = this.joinedRooms.get(socket);
 

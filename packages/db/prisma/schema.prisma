@@ -21,6 +21,7 @@ enum InvitationStatus {
   PENDING
   ACCEPTED
   REJECTED
+  FAILED
 }
 
 model User {

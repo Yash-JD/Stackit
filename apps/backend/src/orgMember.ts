@@ -60,16 +60,97 @@ router.post(
         isDeleted: false,
       },
     });
-    sendInviteEmail(
-      `Admin <${org?.name || "admin"}@stackit.com>`,
-      data.email,
-      org?.name ?? "an organization",
-      invitation.id,
-    );
+    try {
+      await sendInviteEmail(
+        `Admin <${org?.name || "admin"}@stackit.com>`,
+        data.email,
+        org?.name ?? "an organization",
+        invitation.id,
+      );
+    } catch {
+      await prisma.invitation.update({
+        where: { id: invitation.id },
+        data: { status: "FAILED" },
+      });
+
+      return res.status(200).json({
+        success: true,
+        msg: "INVITATION_EMAIL_FAILED",
+        data: { invitationId: invitation.id, emailSent: false },
+      });
+    }
 
     return res.status(200).json({
       success: true,
       msg: "INVITATION_SENT",
+      data: { invitationId: invitation.id, emailSent: true },
+    });
+  },
+);
+
+router.get(
+  "/api/v1/invitation/pending",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    const user = await prisma.user.findUnique({
+      where: { id: req.id, isDeleted: false },
+      select: { email: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: "USER_NOT_FOUND",
+      });
+    }
+
+    const invitations = await prisma.invitation.findMany({
+      where: {
+        email: user.email,
+        status: "PENDING",
+        isDeleted: false,
+      },
+      include: {
+        org: { select: { id: true, name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: { invitations },
+    });
+  },
+);
+
+router.get(
+  "/api/v1/invitation/organization/:orgId",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    const orgId = req.params.orgId as string;
+
+    if (!(await hasRole(req.id, orgId, "admin"))) {
+      return res.status(403).json({
+        success: false,
+        error: "UNAUTHORIZED",
+      });
+    }
+
+    const invitations = await prisma.invitation.findMany({
+      where: {
+        orgId,
+        status: { in: ["PENDING", "FAILED"] },
+        isDeleted: false,
+      },
+      include: {
+        inviter: { select: { email: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: { invitations },
     });
   },
 );
@@ -151,6 +232,55 @@ router.post(
   },
 );
 
+router.post(
+  "/api/v1/reject/:inviteId",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    const invitation = await prisma.invitation.findUnique({
+      where: {
+        id: req.params.inviteId as string,
+        isDeleted: false,
+      },
+    });
+
+    if (!invitation) {
+      return res.status(404).json({
+        success: false,
+        error: "INVITATION_NOT_FOUND",
+      });
+    }
+
+    if (invitation.status !== "PENDING") {
+      return res.status(400).json({
+        success: false,
+        error: "INVITATION_ACCEPTED_OR_DECLINED",
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.id, isDeleted: false },
+      select: { email: true },
+    });
+
+    if (user?.email !== invitation.email) {
+      return res.status(403).json({
+        success: false,
+        error: "UNAUTHORIZED",
+      });
+    }
+
+    await prisma.invitation.update({
+      where: { id: invitation.id },
+      data: { status: "REJECTED" },
+    });
+
+    return res.status(200).json({
+      success: true,
+      msg: "INVITATION_REJECTED",
+    });
+  },
+);
+
 router.get(
   "/api/v1/membership/:orgId",
   authMiddleware,
@@ -166,7 +296,7 @@ router.get(
     }
 
     const membership = await prisma.membership.findMany({
-      where: { orgId },
+      where: { orgId, isDeleted: false },
       include: {
         user: { select: { id: true, email: true, profilePhoto: true } },
       },
