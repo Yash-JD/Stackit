@@ -1,5 +1,9 @@
 # Frontend Learning Notes
 
+For the up-to-date cross-project user flow and future product roadmap, see
+[PROJECT_FLOW.md](./PROJECT_FLOW.md). For current implementation status,
+architecture, and continuation guidance, see [AGENT_HANDOFF.md](./AGENT_HANDOFF.md).
+
 ## Phase 1: Component Structure
 
 ### What changed

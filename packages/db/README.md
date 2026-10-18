@@ -1,15 +1,77 @@
-# db
+# Stackit database package
 
-To install dependencies:
+This workspace owns the PostgreSQL schema, migrations, Prisma configuration,
+and generated Prisma Client shared by the backend and WebSocket service.
+
+## Architecture and structure
+
+```text
+packages/db/
+  index.ts                  Prisma Client + PostgreSQL adapter export
+  prisma/
+    schema.prisma           Database models, relations, and enums
+    migrations/             Ordered SQL migration history
+  prisma7.config.ts         Prisma schema/migration paths and CLI datasource
+  package.json              Prisma CLI/client dependencies and scripts
+```
+
+The current schema includes users, organizations, memberships, invitations,
+boards, sections, issues, and comments. Important relationships:
+
+- A user can belong to multiple organizations through a membership.
+- A workspace owns boards; boards contain sections and issues.
+- Issues can have comments authored by users.
+- Invitations move through `PENDING`, `ACCEPTED`, `REJECTED`, or `FAILED`
+  delivery/application states.
+- Memberships and most content use `isDeleted` for soft deletion.
+
+The generated client is emitted under `generated/prisma` and is ignored by
+Git; regenerate it after schema changes.
+
+## Requirements and setup
+
+Use Bun 1.3.14 and install the monorepo from its root:
 
 ```bash
+cd ../..
 bun install
 ```
 
-To run:
+Configure `packages/db/.env` with a PostgreSQL `DATABASE_URL` for Prisma CLI
+operations. Runtime services also need `DATABASE_URL` in `apps/backend/.env`.
+Use the same database for migrations and runtime. Keep connection strings
+private and never commit local environment files.
+
+## Prisma workflow
+
+From `packages/db`:
 
 ```bash
-bun run index.ts
+bun run prisma-all
 ```
 
-This project was created using `bun init` in bun v1.3.14. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+The script formats the schema, generates Prisma Client, and runs
+`prisma migrate dev`. It can create and apply migrations and changes the
+configured database; use it only when that is intended. The backend package
+forwards the same command as `bun run prisma-all`.
+
+For schema-only edits, a safe first check is:
+
+```bash
+cd packages/db
+bunx prisma validate
+```
+
+When a schema change requires a migration, review the generated SQL, commit
+the schema and migration together, and regenerate the client. Do not edit old
+migrations to represent new schema changes; add a new migration instead.
+Production deployments should apply reviewed migrations with a deployment
+workflow rather than running `migrate dev`.
+
+## Change checklist
+
+Update all code that depends on changed models or enum values, regenerate the
+client, validate/type-check affected services, and review migration behavior.
+Keep this guide and the root [project flow](../../PROJECT_FLOW.md) or
+[agent handoff](../../AGENT_HANDOFF.md) current when the data model or setup
+workflow changes.
