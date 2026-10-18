@@ -13,7 +13,7 @@ export function SigninPage() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (isAuthenticated) return <Navigate to="/board/product-launch" replace />;
+  if (isAuthenticated) return <Navigate to="/" replace />;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -21,7 +21,7 @@ export function SigninPage() {
     setIsSubmitting(true);
     try {
       await signin(email, password);
-      const destination = location.state?.from ?? "/board/product-launch";
+      const destination = location.state?.from ?? "/";
       navigate(destination, { replace: true });
     } catch (error) {
       setError(error instanceof Error ? error.message : "Unable to sign in");
@@ -80,7 +80,7 @@ export function SignupPage() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (isAuthenticated) return <Navigate to="/board/product-launch" replace />;
+  if (isAuthenticated) return <Navigate to="/" replace />;
 
   const updateField = (field: keyof typeof form, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));

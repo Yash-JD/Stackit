@@ -144,6 +144,57 @@ export async function getOrganizations() {
     .filter((organization) => organization && !organization.isDeleted);
 }
 
+export async function createOrganization(
+  name: string,
+  description = "Workspace for our team",
+) {
+  const response = await apiRequest<Organization>(
+    "/api/v1/organization/create",
+    {
+      method: "POST",
+      authenticated: true,
+      body: JSON.stringify({ name, description }),
+    },
+  );
+
+  if (!response.data) {
+    throw new Error("The server did not create the organization");
+  }
+
+  return response.data;
+}
+
+export async function updateOrganization(
+  organizationId: string,
+  name: string,
+  description: string,
+) {
+  const response = await apiRequest<Organization>(
+    `/api/v1/organization/${encodeURIComponent(organizationId)}`,
+    {
+      method: "PUT",
+      authenticated: true,
+      body: JSON.stringify({ name, description }),
+    },
+  );
+
+  if (!response.data) {
+    throw new Error("The server did not update the organization");
+  }
+
+  return response.data;
+}
+
+export async function deleteOrganization(organizationId: string) {
+  await apiRequest(
+    `/api/v1/organization/${encodeURIComponent(organizationId)}`,
+    {
+      method: "DELETE",
+      authenticated: true,
+    },
+  );
+}
+
 export async function getBoards(orgId: string) {
   const response = await apiRequest<{ board: BoardSummary[] }>(
     `/api/v1/boards?orgId=${encodeURIComponent(orgId)}`,

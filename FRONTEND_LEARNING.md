@@ -257,6 +257,8 @@ Phase 6 adds board CRUD operations, including creating and editing sections and 
 - Added list creation from the board canvas using the backend `createSection` endpoint.
 - Added card creation, card editing, and card deletion by calling the issue endpoints from the board UI.
 - Reused the same async loading pattern after mutations so the board screen refreshes from the server immediately.
+- Added organization creation and workspace settings for updating its name/description or deleting it.
+- Added a signed-in "Your boards" page, grouped by workspace, and kept the selected workspace's full board list in the sidebar.
 
 ### Concepts learned
 
@@ -279,11 +281,11 @@ A real app should ideally keep the UI responsive with optimistic updates, but he
 
 ### Important files
 
-- `apps/frontend/src/App.tsx`: board actions, refresh logic, and CRUD event handlers
-- `apps/frontend/src/components/Sidebar.tsx`: board creation and workspace selection
+- `apps/frontend/src/App.tsx`: workspace board index, board actions, refresh logic, and CRUD event handlers
+- `apps/frontend/src/components/Sidebar.tsx`: organization settings, board creation, board list, and workspace selection
 - `apps/frontend/src/components/BoardTopbar.tsx`: rename/delete board controls
 - `apps/frontend/src/components/BoardCanvas.tsx`: list and card actions inside the board view
-- `apps/frontend/src/api.ts`: backend CRUD operations for boards, sections, and issues
+- `apps/frontend/src/api.ts`: backend CRUD operations for organizations, boards, sections, and issues
 
 ### Next phase
 

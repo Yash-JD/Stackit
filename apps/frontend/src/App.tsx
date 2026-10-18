@@ -1,12 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import "./index.css";
-import { Navigate, Outlet, Route, Routes, useNavigate, useParams } from "react-router";
+import { Menu } from "lucide-react";
+import {
+  Link,
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  useNavigate,
+  useParams,
+} from "react-router";
 import { useAuth } from "./auth";
 import {
   createIssue,
   createSection,
   deleteBoard,
   deleteIssue,
+  getBoards,
   getBoardSections,
   getIssuesForSection,
   getOrganizations,
@@ -19,15 +29,16 @@ import { BoardHeader, BoardTopbar } from "./components/BoardTopbar";
 import { BoardToolbar } from "./components/BoardToolbar";
 import { Sidebar } from "./components/Sidebar";
 import type { BoardColumn, Card, CardLabel } from "./types";
+import type { BoardSummary, Organization } from "./api";
 
 export function App() {
   return (
     <div className="app">
       <Routes>
-        <Route path="/" element={<Navigate to="/board/product-launch" replace />} />
         <Route path="/signin" element={<SigninPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route element={<ProtectedRoute />}>
+          <Route path="/" element={<WorkspaceHome />} />
           <Route path="/board/:boardId" element={<Board />} />
         </Route>
       </Routes>
@@ -38,6 +49,150 @@ export function App() {
 function ProtectedRoute() {
   const { isAuthenticated } = useAuth();
   return isAuthenticated ? <Outlet /> : <Navigate to="/signin" replace />;
+}
+
+function WorkspaceHome() {
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [workspaces, setWorkspaces] = useState<
+    Array<{ organization: Organization; boards: BoardSummary[] }>
+  >([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [retry, setRetry] = useState(0);
+
+  const loadWorkspaceBoards = useCallback(async () => {
+    setIsLoading(true);
+    setError("");
+    try {
+      const organizations = await getOrganizations();
+      const groups = await Promise.all(
+        organizations.map(async (organization) => ({
+          organization,
+          boards: await getBoards(organization.id),
+        })),
+      );
+      setWorkspaces(groups);
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Unable to load workspace boards.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadWorkspaceBoards();
+  }, [loadWorkspaceBoards, retry]);
+
+  useEffect(() => {
+    const refreshWorkspaces = () => {
+      void loadWorkspaceBoards();
+    };
+    window.addEventListener("stackit:organizations-changed", refreshWorkspaces);
+    return () =>
+      window.removeEventListener(
+        "stackit:organizations-changed",
+        refreshWorkspaces,
+      );
+  }, [loadWorkspaceBoards]);
+
+  const boardCount = workspaces.reduce(
+    (total, workspace) => total + workspace.boards.length,
+    0,
+  );
+
+  return (
+    <div className="workspace-shell">
+      <Sidebar isOpen={showSidebar} onClose={() => setShowSidebar(false)} />
+      <main className="board-shell workspace-home">
+        <header className="workspace-home-header">
+          <button
+            className="icon-button mobile-menu"
+            onClick={() => setShowSidebar((current) => !current)}
+            aria-label="Toggle sidebar"
+          >
+            <Menu size={19} />
+          </button>
+          <div>
+            <p className="eyebrow">WORKSPACES</p>
+            <h1>Your boards</h1>
+            <p>Choose a board to continue, or create one for your team.</p>
+          </div>
+          {!isLoading && !error && (
+            <span className="workspace-board-total">
+              {boardCount} {boardCount === 1 ? "board" : "boards"}
+            </span>
+          )}
+        </header>
+        {isLoading ? (
+          <div className="board-state" role="status">
+            Loading your workspaces and boards...
+          </div>
+        ) : error ? (
+          <div className="board-state board-state-error" role="alert">
+            <p>{error}</p>
+            <button
+              className="secondary-button"
+              onClick={() => setRetry((current) => current + 1)}
+            >
+              Retry
+            </button>
+          </div>
+        ) : workspaces.length === 0 ? (
+          <section className="workspace-home-empty">
+            <div className="workspace-empty-icon">✦</div>
+            <h2>Create your first workspace</h2>
+            <p>
+              Workspaces keep your boards and team projects together. Use the
+              sidebar to create one and get started.
+            </p>
+          </section>
+        ) : (
+          <div className="workspace-board-groups">
+            {workspaces.map(({ organization, boards }) => (
+              <section className="workspace-board-group" key={organization.id}>
+                <div className="workspace-board-group-header">
+                  <div className="workspace-avatar">
+                    {organization.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <h2>{organization.name}</h2>
+                    <p>
+                      {boards.length} {boards.length === 1 ? "board" : "boards"}
+                    </p>
+                  </div>
+                </div>
+                {boards.length > 0 ? (
+                  <div className="workspace-board-grid">
+                    {boards.map((board, index) => (
+                      <Link
+                        className="workspace-board-card"
+                        key={board.id}
+                        to={`/board/${board.id}`}
+                      >
+                        <span className={`workspace-board-art art-${index % 4}`}>
+                          <span>{board.title.charAt(0).toUpperCase()}</span>
+                        </span>
+                        <strong>{board.title}</strong>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="workspace-no-boards">
+                    No boards in this workspace yet. Use “New board” in the
+                    sidebar to create one.
+                  </p>
+                )}
+              </section>
+            ))}
+          </div>
+        )}
+      </main>
+    </div>
+  );
 }
 
 function Board() {
