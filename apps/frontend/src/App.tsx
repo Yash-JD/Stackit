@@ -1,20 +1,17 @@
 import { useMemo, useState, type FormEvent } from "react";
 import "./index.css";
-import { Menu } from "lucide-react";
+import { Menu, Pencil, Plus, Trash2 } from "lucide-react";
 import {
   Link,
   Navigate,
   Outlet,
   Route,
   Routes,
-  useNavigate,
+  useOutletContext,
   useParams,
 } from "react-router";
 import { useAuth } from "./auth";
-import {
-  createBoard,
-  deleteBoard,
-} from "./api";
+import { createBoard, deleteBoard, renameBoard } from "./api";
 import { SigninPage, SignupPage } from "./components/AuthPage";
 import { BoardCanvas, CardDetail } from "./components/BoardCanvas";
 import { BoardHeader, BoardTopbar } from "./components/BoardTopbar";
@@ -26,12 +23,13 @@ import { useBoard } from "./hooks/useBoard";
 import { useWorkspaceBoards } from "./hooks/useWorkspaceBoards";
 
 type BoardDialog =
-  | { type: "rename-board" }
-  | { type: "create-board" }
   | { type: "create-card"; columnId: string }
   | { type: "edit-card"; card: Card }
-  | { type: "delete-board" }
   | { type: "delete-card"; card: Card };
+
+type BoardManagementDialog =
+  | { type: "rename"; board: BoardSummary }
+  | { type: "delete"; board: BoardSummary };
 
 export function App() {
   return (
@@ -40,8 +38,10 @@ export function App() {
         <Route path="/signin" element={<SigninPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route element={<ProtectedRoute />}>
-          <Route path="/" element={<WorkspaceHome />} />
-          <Route path="/board/:boardId" element={<Board />} />
+          <Route element={<WorkspaceLayout />}>
+            <Route path="/" element={<WorkspaceHome />} />
+            <Route path="/board/:boardId" element={<Board />} />
+          </Route>
         </Route>
       </Routes>
     </div>
@@ -51,6 +51,27 @@ export function App() {
 function ProtectedRoute() {
   const { isAuthenticated } = useAuth();
   return isAuthenticated ? <Outlet /> : <Navigate to="/signin" replace />;
+}
+
+type WorkspaceLayoutContext = ReturnType<typeof useWorkspaceBoards> & {
+  toggleSidebar: () => void;
+};
+
+function WorkspaceLayout() {
+  const [showSidebar, setShowSidebar] = useState(false);
+  const workspaceBoards = useWorkspaceBoards();
+
+  return (
+    <div className="workspace-shell">
+      <Sidebar isOpen={showSidebar} onClose={() => setShowSidebar(false)} />
+      <Outlet
+        context={{
+          ...workspaceBoards,
+          toggleSidebar: () => setShowSidebar((current) => !current),
+        }}
+      />
+    </div>
+  );
 }
 
 function CreateBoardDialog({
@@ -172,26 +193,71 @@ function CreateBoardDialog({
 }
 
 function WorkspaceHome() {
-  const [showSidebar, setShowSidebar] = useState(false);
+  const { toggleSidebar, workspaces, boardCount, isLoading, error, refresh } =
+    useOutletContext<WorkspaceLayoutContext>();
   const [showCreateBoard, setShowCreateBoard] = useState(false);
-  const { workspaces, boardCount, isLoading, error, refresh } =
-    useWorkspaceBoards();
+  const [createBoardOrganizationId, setCreateBoardOrganizationId] =
+    useState<string>();
+  const [boardManagementDialog, setBoardManagementDialog] =
+    useState<BoardManagementDialog | null>(null);
+  const [boardTitle, setBoardTitle] = useState("");
+  const [boardActionError, setBoardActionError] = useState("");
+  const [isBoardActionSubmitting, setIsBoardActionSubmitting] = useState(false);
+  const openCreateBoard = (organizationId: string) => {
+    setCreateBoardOrganizationId(organizationId);
+    setShowCreateBoard(true);
+  };
+
+  const openBoardManagement = (dialog: BoardManagementDialog) => {
+    setBoardManagementDialog(dialog);
+    setBoardTitle(dialog.type === "rename" ? dialog.board.title : "");
+    setBoardActionError("");
+  };
+
+  const handleBoardAction = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!boardManagementDialog) return;
+
+    setBoardActionError("");
+    setIsBoardActionSubmitting(true);
+    try {
+      if (boardManagementDialog.type === "rename") {
+        const title = boardTitle.trim();
+        if (!title) {
+          setBoardActionError("Board name is required.");
+          return;
+        }
+        await renameBoard(boardManagementDialog.board.id, title);
+      } else {
+        await deleteBoard(boardManagementDialog.board.id);
+      }
+      setBoardManagementDialog(null);
+      window.dispatchEvent(new Event("stackit:boards-changed"));
+    } catch (actionError) {
+      setBoardActionError(
+        actionError instanceof Error
+          ? actionError.message
+          : "Unable to update this board.",
+      );
+    } finally {
+      setIsBoardActionSubmitting(false);
+    }
+  };
 
   return (
-    <div className="workspace-shell">
-      <Sidebar isOpen={showSidebar} onClose={() => setShowSidebar(false)} />
+    <>
       <main className="board-shell workspace-home">
         <header className="workspace-home-header">
           <button
             className="icon-button mobile-menu"
-            onClick={() => setShowSidebar((current) => !current)}
+            onClick={toggleSidebar}
             aria-label="Toggle sidebar"
           >
             <Menu size={19} />
           </button>
           <div>
             <p className="eyebrow">WORKSPACES</p>
-            <h1>Your boards</h1>
+            <h1>Boards</h1>
             <p>Choose a board to continue, or create one for your team.</p>
           </div>
           {!isLoading && !error && (
@@ -199,15 +265,6 @@ function WorkspaceHome() {
               <span className="workspace-board-total">
                 {boardCount} {boardCount === 1 ? "board" : "boards"}
               </span>
-              {workspaces.length > 0 && (
-                <button
-                  type="button"
-                  className="primary-button"
-                  onClick={() => setShowCreateBoard(true)}
-                >
-                  New board
-                </button>
-              )}
             </div>
           )}
         </header>
@@ -218,10 +275,7 @@ function WorkspaceHome() {
         ) : error ? (
           <div className="board-state board-state-error" role="alert">
             <p>{error}</p>
-            <button
-              className="secondary-button"
-              onClick={() => void refresh()}
-            >
+            <button className="secondary-button" onClick={() => void refresh()}>
               Retry
             </button>
           </div>
@@ -249,27 +303,55 @@ function WorkspaceHome() {
                     </p>
                   </div>
                 </div>
-                {boards.length > 0 ? (
-                  <div className="workspace-board-grid">
-                    {boards.map((board, index) => (
+                <div className="workspace-board-grid">
+                  {boards.map((board, index) => (
+                    <article className="workspace-board-card" key={board.id}>
+                      <div className="workspace-board-card-actions">
+                        <button
+                          type="button"
+                          className="icon-button"
+                          aria-label={`Rename ${board.title}`}
+                          title="Rename board"
+                          onClick={() =>
+                            openBoardManagement({ type: "rename", board })
+                          }
+                        >
+                          <Pencil size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-button danger"
+                          aria-label={`Delete ${board.title}`}
+                          title="Delete board"
+                          onClick={() =>
+                            openBoardManagement({ type: "delete", board })
+                          }
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
                       <Link
-                        className="workspace-board-card"
-                        key={board.id}
+                        className="workspace-board-card-link"
                         to={`/board/${board.id}`}
                       >
-                        <span className={`workspace-board-art art-${index % 4}`}>
+                        <span
+                          className={`workspace-board-art art-${index % 4}`}
+                        >
                           <span>{board.title.charAt(0).toUpperCase()}</span>
                         </span>
                         <strong>{board.title}</strong>
                       </Link>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="workspace-no-boards">
-                    No boards in this workspace yet. Select “New board” above
-                    to create one.
-                  </p>
-                )}
+                    </article>
+                  ))}
+                  <button
+                    type="button"
+                    className="workspace-board-add"
+                    onClick={() => openCreateBoard(organization.id)}
+                  >
+                    <Plus size={17} />
+                    <span>Add new board</span>
+                  </button>
+                </div>
               </section>
             ))}
           </div>
@@ -278,6 +360,7 @@ function WorkspaceHome() {
       {showCreateBoard && (
         <CreateBoardDialog
           organizations={workspaces.map(({ organization }) => organization)}
+          initialOrganizationId={createBoardOrganizationId}
           onClose={() => setShowCreateBoard(false)}
           onCreated={() => {
             setShowCreateBoard(false);
@@ -285,23 +368,108 @@ function WorkspaceHome() {
           }}
         />
       )}
-    </div>
+      {boardManagementDialog && (
+        <div
+          className="modal-backdrop centered-modal-backdrop"
+          onClick={() =>
+            !isBoardActionSubmitting && setBoardManagementDialog(null)
+          }
+        >
+          <section
+            className="centered-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="board-management-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="sidebar-form-header">
+              <h3 id="board-management-title">
+                {boardManagementDialog.type === "rename"
+                  ? "Rename board"
+                  : "Delete board"}
+              </h3>
+              <button
+                type="button"
+                className="icon-button"
+                onClick={() => setBoardManagementDialog(null)}
+                disabled={isBoardActionSubmitting}
+                aria-label="Close board dialog"
+              >
+                ×
+              </button>
+            </div>
+            <form className="sidebar-form" onSubmit={handleBoardAction}>
+              {boardManagementDialog.type === "rename" ? (
+                <label>
+                  <span>Board name</span>
+                  <input
+                    value={boardTitle}
+                    onChange={(event) => setBoardTitle(event.target.value)}
+                    autoFocus
+                    required
+                    maxLength={120}
+                  />
+                </label>
+              ) : (
+                <p className="dialog-description">
+                  Delete “{boardManagementDialog.board.title}”? This action
+                  cannot be undone.
+                </p>
+              )}
+              {boardActionError && (
+                <p className="form-error" role="alert">
+                  {boardActionError}
+                </p>
+              )}
+              <div className="sidebar-form-actions">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => setBoardManagementDialog(null)}
+                  disabled={isBoardActionSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className={
+                    boardManagementDialog.type === "delete"
+                      ? "danger-button"
+                      : "primary-button"
+                  }
+                  disabled={
+                    isBoardActionSubmitting ||
+                    (boardManagementDialog.type === "rename" &&
+                      !boardTitle.trim())
+                  }
+                >
+                  {isBoardActionSubmitting
+                    ? boardManagementDialog.type === "rename"
+                      ? "Saving..."
+                      : "Deleting..."
+                    : boardManagementDialog.type === "rename"
+                      ? "Save"
+                      : "Delete"}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+    </>
   );
 }
 
 function Board() {
-  const navigate = useNavigate();
+  const { toggleSidebar } = useOutletContext<WorkspaceLayoutContext>();
   const { boardId } = useParams();
   const {
     columns,
     title: boardTitle,
-    organizationId: boardOrganizationId,
     isLoading: isLoadingBoard,
     error: boardError,
     pendingMoveIds,
     moveError,
-    refresh: loadBoard,
-    rename: renameBoardTitle,
     addSection,
     createCard,
     updateCard,
@@ -311,7 +479,6 @@ function Board() {
   const [query, setQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<"all" | CardLabel>("all");
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
-  const [showSidebar, setShowSidebar] = useState(false);
   const [showAddList, setShowAddList] = useState(false);
   const [newListTitle, setNewListTitle] = useState("");
   const [dialog, setDialog] = useState<BoardDialog | null>(null);
@@ -338,10 +505,7 @@ function Board() {
   const openDialog = (nextDialog: BoardDialog) => {
     setDialog(nextDialog);
     setDialogError("");
-    if (nextDialog.type === "rename-board") {
-      setDialogTitle(boardTitle);
-      setDialogDescription("");
-    } else if (nextDialog.type === "create-card") {
+    if (nextDialog.type === "create-card") {
       setDialogTitle("");
       setDialogDescription("");
     } else if (nextDialog.type === "edit-card") {
@@ -356,10 +520,7 @@ function Board() {
 
     const title = dialogTitle.trim();
     if (
-      (dialog.type === "rename-board" ||
-        dialog.type === "create-board" ||
-        dialog.type === "create-card" ||
-        dialog.type === "edit-card") &&
+      (dialog.type === "create-card" || dialog.type === "edit-card") &&
       !title
     ) {
       setDialogError("A title is required.");
@@ -370,21 +531,6 @@ function Board() {
     setIsSubmittingDialog(true);
     try {
       switch (dialog.type) {
-        case "rename-board":
-          if (!boardId) return;
-          await renameBoardTitle(title);
-          break;
-        case "create-board": {
-          if (!boardOrganizationId) {
-            setDialogError("Unable to determine this board's workspace.");
-            return;
-          }
-          const newBoard = await createBoard(boardOrganizationId, title);
-          setDialog(null);
-          window.dispatchEvent(new Event("stackit:boards-changed"));
-          navigate(`/board/${newBoard.id}`);
-          return;
-        }
         case "create-card":
           await createCard(
             dialog.columnId,
@@ -404,10 +550,11 @@ function Board() {
           return;
       }
       setDialog(null);
-      await loadBoard();
     } catch (error) {
       setDialogError(
-        error instanceof Error ? error.message : "Unable to save these changes.",
+        error instanceof Error
+          ? error.message
+          : "Unable to save these changes.",
       );
     } finally {
       setIsSubmittingDialog(false);
@@ -419,19 +566,16 @@ function Board() {
     setDialogError("");
     setIsSubmittingDialog(true);
     try {
-      if (dialog.type === "delete-board") {
-        if (!boardId) return;
-        await deleteBoard(boardId);
-        setDialog(null);
-        navigate("/", { replace: true });
-      } else if (dialog.type === "delete-card") {
+      if (dialog.type === "delete-card") {
         await deleteCard(dialog.card.id);
         setDialog(null);
         setSelectedCard(null);
       }
     } catch (error) {
       setDialogError(
-        error instanceof Error ? error.message : "Unable to complete this action.",
+        error instanceof Error
+          ? error.message
+          : "Unable to complete this action.",
       );
     } finally {
       setIsSubmittingDialog(false);
@@ -453,20 +597,10 @@ function Board() {
   };
 
   return (
-    <div className="workspace-shell">
-      <Sidebar isOpen={showSidebar} onClose={() => setShowSidebar(false)} />
+    <>
       <main className="board-shell">
-        <BoardTopbar
-          boardId={boardId}
-          boardTitle={boardTitle}
-          onMenuClick={() => setShowSidebar((current) => !current)}
-        />
-        <BoardHeader
-          title={boardTitle}
-          onRename={() => openDialog({ type: "rename-board" })}
-          onCreateBoard={() => openDialog({ type: "create-board" })}
-          onDelete={() => openDialog({ type: "delete-board" })}
-        />
+        <BoardTopbar boardTitle={boardTitle} onMenuClick={toggleSidebar} />
+        <BoardHeader title={boardTitle} />
         <BoardToolbar
           query={query}
           activeFilter={activeFilter}
@@ -491,6 +625,8 @@ function Board() {
               openDialog({ type: "create-card", columnId })
             }
             onSelectCard={setSelectedCard}
+            onEditCard={(card) => openDialog({ type: "edit-card", card })}
+            onDeleteCard={(card) => openDialog({ type: "delete-card", card })}
             showAddList={showAddList}
             newListTitle={newListTitle}
             onNewListTitleChange={setNewListTitle}
@@ -530,17 +666,11 @@ function Board() {
           >
             <div className="sidebar-form-header">
               <h3 id="board-dialog-title">
-                {dialog.type === "rename-board"
-                  ? "Rename board"
-                  : dialog.type === "create-board"
-                    ? "Create board"
-                  : dialog.type === "create-card"
-                    ? "Create card"
-                    : dialog.type === "edit-card"
-                      ? "Edit card"
-                      : dialog.type === "delete-board"
-                        ? "Delete board"
-                        : "Delete card"}
+                {dialog.type === "create-card"
+                  ? "Create card"
+                  : dialog.type === "edit-card"
+                    ? "Edit card"
+                    : "Delete card"}
               </h3>
               <button
                 type="button"
@@ -552,13 +682,10 @@ function Board() {
                 ×
               </button>
             </div>
-            {dialog.type === "delete-board" ||
-            dialog.type === "delete-card" ? (
+            {dialog.type === "delete-card" ? (
               <div className="sidebar-form">
                 <p className="dialog-description">
-                  {dialog.type === "delete-board"
-                    ? "Delete this board? This action cannot be undone."
-                    : `Delete "${dialog.card.title}"? This action cannot be undone.`}
+                  {`Delete "${dialog.card.title}"? This action cannot be undone.`}
                 </p>
                 {dialogError && (
                   <p className="form-error" role="alert">
@@ -587,12 +714,7 @@ function Board() {
             ) : (
               <form onSubmit={handleDialogSubmit} className="sidebar-form">
                 <label>
-                  <span>
-                    {dialog.type === "rename-board" ||
-                    dialog.type === "create-board"
-                      ? "Board name"
-                      : "Card title"}
-                  </span>
+                  <span>Card title</span>
                   <input
                     value={dialogTitle}
                     onChange={(event) => setDialogTitle(event.target.value)}
@@ -601,19 +723,16 @@ function Board() {
                     maxLength={120}
                   />
                 </label>
-                {dialog.type !== "rename-board" &&
-                  dialog.type !== "create-board" && (
-                  <label>
-                    <span>Description</span>
-                    <textarea
-                      value={dialogDescription}
-                      onChange={(event) =>
-                        setDialogDescription(event.target.value)
-                      }
-                      placeholder="Add a description"
-                    />
-                  </label>
-                )}
+                <label>
+                  <span>Description</span>
+                  <textarea
+                    value={dialogDescription}
+                    onChange={(event) =>
+                      setDialogDescription(event.target.value)
+                    }
+                    placeholder="Add a description"
+                  />
+                </label>
                 {dialogError && (
                   <p className="form-error" role="alert">
                     {dialogError}
@@ -635,13 +754,9 @@ function Board() {
                   >
                     {isSubmittingDialog
                       ? "Saving..."
-                      : dialog.type === "rename-board"
-                        ? "Save changes"
-                        : dialog.type === "create-card"
-                          ? "Create card"
-                          : dialog.type === "create-board"
-                            ? "Create board"
-                          : "Save changes"}
+                      : dialog.type === "create-card"
+                        ? "Create card"
+                        : "Save changes"}
                   </button>
                 </div>
               </form>
@@ -649,7 +764,7 @@ function Board() {
           </section>
         </div>
       )}
-    </div>
+    </>
   );
 }
 

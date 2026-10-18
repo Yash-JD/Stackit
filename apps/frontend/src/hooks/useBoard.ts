@@ -118,8 +118,18 @@ export function useBoard(boardId: string | undefined) {
     async (sectionTitle: string) => {
       if (!boardId) return false;
       try {
-        await createSection(boardId, sectionTitle);
-        await refresh();
+        const section = await createSection(boardId, sectionTitle);
+        setColumns((current) => [
+          ...current,
+          {
+            id: section.id,
+            title: section.title,
+            color:
+              SECTION_COLORS[current.length % SECTION_COLORS.length] ??
+              "#8d9baa",
+            cards: [],
+          },
+        ]);
         return true;
       } catch (createError) {
         setError(
@@ -135,27 +145,62 @@ export function useBoard(boardId: string | undefined) {
 
   const createCard = useCallback(
     async (sectionId: string, cardTitle: string, description: string) => {
-      await createIssue(sectionId, cardTitle, description);
-      await refresh();
+      const issue = await createIssue(sectionId, cardTitle, description);
+      setColumns((current) =>
+        current.map((column) =>
+          column.id === sectionId
+            ? {
+                ...column,
+                cards: [
+                  ...column.cards,
+                  {
+                    id: issue.id,
+                    title: issue.title,
+                    label:
+                      CARD_LABELS[column.cards.length % CARD_LABELS.length] ??
+                      "Build",
+                    description:
+                      issue.description || "No description added yet.",
+                  },
+                ],
+              }
+            : column,
+        ),
+      );
     },
-    [refresh],
+    [],
   );
 
   const updateCard = useCallback(
     async (cardId: string, cardTitle: string, description: string) => {
-      await updateIssue(cardId, cardTitle, description);
-      await refresh();
+      const issue = await updateIssue(cardId, cardTitle, description);
+      setColumns((current) =>
+        current.map((column) => ({
+          ...column,
+          cards: column.cards.map((card) =>
+            card.id === cardId
+              ? {
+                  ...card,
+                  title: issue.title,
+                  description: issue.description || "No description added yet.",
+                }
+              : card,
+          ),
+        })),
+      );
     },
-    [refresh],
+    [],
   );
 
-  const deleteCard = useCallback(
-    async (cardId: string) => {
-      await deleteIssue(cardId);
-      await refresh();
-    },
-    [refresh],
-  );
+  const deleteCard = useCallback(async (cardId: string) => {
+    await deleteIssue(cardId);
+    setColumns((current) =>
+      current.map((column) => ({
+        ...column,
+        cards: column.cards.filter((card) => card.id !== cardId),
+      })),
+    );
+  }, []);
 
   const moveCard = useCallback(
     async (cardId: string, sourceColumnId: string, targetColumnId: string) => {

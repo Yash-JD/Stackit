@@ -246,6 +246,18 @@ button {
   font-size: 12px;
   text-decoration: none;
 }
+.recent-board-add {
+  justify-content: flex-start;
+  margin-top: 5px;
+  color: #a8d7ca;
+  text-align: left;
+}
+.recent-board-add svg {
+  margin-left: auto;
+}
+.recent-board-add:hover {
+  color: #d8f4eb;
+}
 .sidebar-state {
   margin: 0;
   padding: 8px 10px;
@@ -485,6 +497,7 @@ button {
   gap: 16px;
 }
 .workspace-board-card {
+  position: relative;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 11px;
@@ -501,7 +514,12 @@ button {
   border-color: rgba(169, 225, 210, 0.38);
   background: #202d30;
 }
-.workspace-board-card > strong {
+.workspace-board-card-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+.workspace-board-card-link > strong {
   display: block;
   overflow: hidden;
   padding: 12px 14px 14px;
@@ -509,12 +527,59 @@ button {
   white-space: nowrap;
   font-size: 13px;
 }
+.workspace-board-card-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(12, 21, 23, 0.76);
+  backdrop-filter: blur(8px);
+}
+.workspace-board-card-actions .icon-button {
+  width: 29px;
+  height: 29px;
+}
+.workspace-board-card-actions .icon-button.danger:hover {
+  color: #ffaaaa;
+  background: rgba(170, 60, 60, 0.22);
+}
+.workspace-board-add {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  min-height: 166px;
+  border: 1px dashed rgba(169, 225, 210, 0.28);
+  border-radius: 11px;
+  color: #a8d7ca;
+  background: rgba(25, 35, 38, 0.38);
+  font-size: 12px;
+  font-weight: 650;
+  transition:
+    border-color 0.18s,
+    background 0.18s,
+    transform 0.18s;
+}
+.workspace-board-add:hover {
+  transform: translateY(-2px);
+  border-color: rgba(169, 225, 210, 0.58);
+  background: rgba(37, 56, 57, 0.7);
+}
 .workspace-board-art {
   display: grid;
   place-items: center;
   height: 112px;
   background:
-    radial-gradient(circle at 72% 24%, rgba(255, 255, 255, 0.24), transparent 27%),
+    radial-gradient(
+      circle at 72% 24%,
+      rgba(255, 255, 255, 0.24),
+      transparent 27%
+    ),
     linear-gradient(135deg, #39786d, #244147);
 }
 .workspace-board-art > span {
@@ -531,17 +596,29 @@ button {
 }
 .workspace-board-art.art-1 {
   background:
-    radial-gradient(circle at 24% 20%, rgba(255, 255, 255, 0.22), transparent 30%),
+    radial-gradient(
+      circle at 24% 20%,
+      rgba(255, 255, 255, 0.22),
+      transparent 30%
+    ),
     linear-gradient(135deg, #867052, #57485b);
 }
 .workspace-board-art.art-2 {
   background:
-    radial-gradient(circle at 70% 26%, rgba(255, 255, 255, 0.2), transparent 28%),
+    radial-gradient(
+      circle at 70% 26%,
+      rgba(255, 255, 255, 0.2),
+      transparent 28%
+    ),
     linear-gradient(135deg, #3b7181, #343c67);
 }
 .workspace-board-art.art-3 {
   background:
-    radial-gradient(circle at 24% 70%, rgba(255, 255, 255, 0.2), transparent 27%),
+    radial-gradient(
+      circle at 24% 70%,
+      rgba(255, 255, 255, 0.2),
+      transparent 27%
+    ),
     linear-gradient(135deg, #78617b, #3d6260);
 }
 .workspace-no-boards {
@@ -939,9 +1016,8 @@ button {
   gap: 9px;
 }
 .task-card {
+  position: relative;
   display: block;
-  width: 100%;
-  padding: 14px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 9px;
   color: inherit;
@@ -969,6 +1045,45 @@ button {
   border-color: rgba(169, 225, 210, 0.4);
   background: #263638;
   transform: translateY(-2px);
+}
+.task-card-open {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+}
+.task-card-open:focus-visible {
+  outline: 2px solid #a9e1d2;
+  outline-offset: -3px;
+}
+.task-card-actions {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  z-index: 1;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 7px;
+  background: rgba(12, 21, 23, 0.82);
+  opacity: 1;
+  transition: opacity 0.15s;
+}
+.task-card:hover .task-card-actions,
+.task-card:focus-within .task-card-actions {
+  opacity: 1;
+}
+.task-card-actions .icon-button {
+  width: 27px;
+  height: 27px;
+}
+.task-card-actions .icon-button.danger:hover {
+  color: #ffaaaa;
+  background: rgba(170, 60, 60, 0.22);
 }
 .card-label,
 .detail-label {

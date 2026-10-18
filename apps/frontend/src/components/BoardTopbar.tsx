@@ -1,17 +1,12 @@
-import { Bell, Menu, Plus, Sparkles, Trash2, Users } from "lucide-react";
+import { Bell, Menu, Sparkles, Users } from "lucide-react";
 import { useNavigate } from "react-router";
 
 type BoardTopbarProps = {
-  boardId?: string;
   boardTitle?: string;
   onMenuClick: () => void;
 };
 
-export function BoardTopbar({
-  boardId,
-  boardTitle,
-  onMenuClick,
-}: BoardTopbarProps) {
+export function BoardTopbar({ boardTitle, onMenuClick }: BoardTopbarProps) {
   const navigate = useNavigate();
 
   return (
@@ -24,9 +19,7 @@ export function BoardTopbar({
         <Menu size={19} />
       </button>
       <div className="breadcrumbs">
-        <button onClick={() => navigate(boardId ? `/board/${boardId}` : "/")}>
-          Boards
-        </button>
+        <button onClick={() => navigate("/")}>Boards</button>
         <span>/</span>
         <strong>{boardTitle ?? "Board"}</strong>
       </div>
@@ -48,17 +41,7 @@ export function BoardTopbar({
   );
 }
 
-export function BoardHeader({
-  title = "Board",
-  onRename,
-  onCreateBoard,
-  onDelete,
-}: {
-  title?: string;
-  onRename?: () => void;
-  onCreateBoard?: () => void;
-  onDelete?: () => void;
-}) {
+export function BoardHeader({ title = "Board" }: { title?: string }) {
   return (
     <section className="board-header">
       <div>
@@ -69,21 +52,6 @@ export function BoardHeader({
         <p>Turn the next big idea into something people can use.</p>
       </div>
       <div className="board-header-actions">
-        {onRename && (
-          <button className="share-button" onClick={onRename}>
-            <Users size={16} /> Rename board
-          </button>
-        )}
-        {onCreateBoard && (
-          <button className="share-button" onClick={onCreateBoard}>
-            <Plus size={15} /> New board
-          </button>
-        )}
-        {onDelete && (
-          <button className="share-button danger" onClick={onDelete}>
-            <Trash2 size={15} /> Delete board
-          </button>
-        )}
         <button className="share-button">
           <Users size={16} /> Share board
         </button>

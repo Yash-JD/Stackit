@@ -335,7 +335,11 @@ Phase 8 extracts board and workspace data loading and mutation behavior into cus
 - Added `useWorkspaceBoards` to load workspace board groups, calculate the board total, and refresh when workspace or board change events occur.
 - Kept page components responsible for rendering and dialog state while moving reusable server-state behavior out of `App`.
 - Added request sequencing so older overlapping loads cannot overwrite newer results.
+- Updated board cards locally after create, edit, and delete instead of reloading every section and card after each action.
+- Appended newly created sections to the existing board state instead of reloading all sections and cards.
 - Continued using the existing `useAuth` context hook for authentication state and sign-in behavior.
+- Moved board rename/delete actions to the board tiles on the Boards page and added board creation at the end of the board list.
+- Kept the sidebar and workspace board data mounted across board/index navigation to avoid reloading the sidebar list on each route change.
 
 ### Concepts learned
 

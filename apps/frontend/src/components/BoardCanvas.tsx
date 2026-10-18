@@ -1,11 +1,13 @@
 import { useState, type DragEvent } from "react";
-import { Check, MoreHorizontal, Plus, X } from "lucide-react";
+import { Check, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
 import type { BoardColumn, Card } from "../types";
 
 type BoardCanvasProps = {
   columns: BoardColumn[];
   onAddCard: (columnId: string) => void;
   onSelectCard: (card: Card) => void;
+  onEditCard: (card: Card) => void;
+  onDeleteCard: (card: Card) => void;
   onMoveCard: (
     cardId: string,
     sourceColumnId: string,
@@ -25,6 +27,8 @@ export function BoardCanvas({
   columns,
   onAddCard,
   onSelectCard,
+  onEditCard,
+  onDeleteCard,
   onMoveCard,
   pendingMoveIds,
   moveError,
@@ -64,6 +68,8 @@ export function BoardCanvas({
             column={column}
             onAddCard={onAddCard}
             onSelectCard={onSelectCard}
+            onEditCard={onEditCard}
+            onDeleteCard={onDeleteCard}
             isDropTarget={dragOverColumnId === column.id}
             draggedCardId={draggedCard?.id ?? null}
             pendingMoveIds={pendingMoveIds}
@@ -140,6 +146,8 @@ function BoardColumnView({
   column,
   onAddCard,
   onSelectCard,
+  onEditCard,
+  onDeleteCard,
   isDropTarget,
   draggedCardId,
   pendingMoveIds,
@@ -152,6 +160,8 @@ function BoardColumnView({
   column: BoardColumn;
   onAddCard: (columnId: string) => void;
   onSelectCard: (card: Card) => void;
+  onEditCard: (card: Card) => void;
+  onDeleteCard: (card: Card) => void;
   isDropTarget: boolean;
   draggedCardId: string | null;
   pendingMoveIds: string[];
@@ -186,7 +196,7 @@ function BoardColumnView({
       </div>
       <div className="card-list">
         {column.cards.map((card) => (
-          <button
+          <article
             className={`task-card ${
               draggedCardId === card.id ? "task-card-dragging" : ""
             } ${pendingMoveIds.includes(card.id) ? "task-card-moving" : ""}`}
@@ -198,27 +208,58 @@ function BoardColumnView({
               onCardDragStart(card.id);
             }}
             onDragEnd={onCardDragEnd}
-            onClick={() => onSelectCard(card)}
           >
-            <div className="card-label">
-              <span
-                className={`label-mark label-${card.label.toLowerCase()}`}
-              />
-              {card.label}
+            <div className="task-card-actions">
+              <button
+                type="button"
+                className="icon-button"
+                aria-label={`Edit ${card.title}`}
+                title="Edit card"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onEditCard(card);
+                }}
+              >
+                <Pencil size={14} />
+              </button>
+              <button
+                type="button"
+                className="icon-button danger"
+                aria-label={`Delete ${card.title}`}
+                title="Delete card"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDeleteCard(card);
+                }}
+              >
+                <Trash2 size={14} />
+              </button>
             </div>
-            <h3>{card.title}</h3>
-            <p>{card.description}</p>
-            <div className="card-meta">
-              <span className="mini-avatar">Y</span>
-              {pendingMoveIds.includes(card.id) && (
-                <span className="card-moving-label" role="status">
-                  Moving...
-                </span>
-              )}
-              {card.due && <span className="due-date">{card.due}</span>}
-              <span className="card-comments">•••</span>
-            </div>
-          </button>
+            <button
+              type="button"
+              className="task-card-open"
+              onClick={() => onSelectCard(card)}
+            >
+              <div className="card-label">
+                <span
+                  className={`label-mark label-${card.label.toLowerCase()}`}
+                />
+                {card.label}
+              </div>
+              <h3>{card.title}</h3>
+              <p>{card.description}</p>
+              <div className="card-meta">
+                <span className="mini-avatar">Y</span>
+                {pendingMoveIds.includes(card.id) && (
+                  <span className="card-moving-label" role="status">
+                    Moving...
+                  </span>
+                )}
+                {card.due && <span className="due-date">{card.due}</span>}
+                <span className="card-comments">•••</span>
+              </div>
+            </button>
+          </article>
         ))}
       </div>
       <button className="add-card-button" onClick={() => onAddCard(column.id)}>

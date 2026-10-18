@@ -4,12 +4,14 @@ import {
   ChevronDown,
   LayoutGrid,
   MoreHorizontal,
+  Plus,
   Settings,
   Sparkles,
   Users,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 import {
+  createBoard,
   createOrganization,
   deleteOrganization,
   getBoards,
@@ -40,6 +42,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [boardsError, setBoardsError] = useState("");
   const [organizationsRetry, setOrganizationsRetry] = useState(0);
   const [boardsRetry, setBoardsRetry] = useState(0);
+  const [showCreateBoard, setShowCreateBoard] = useState(false);
+  const [newBoardTitle, setNewBoardTitle] = useState("");
+  const [createBoardError, setCreateBoardError] = useState("");
+  const [isCreatingBoard, setIsCreatingBoard] = useState(false);
   const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
   const [workspaceName, setWorkspaceName] = useState("");
   const [workspaceDescription, setWorkspaceDescription] = useState(
@@ -140,7 +146,32 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     (organization) => organization.id === selectedOrgId,
   );
 
-  const handleCreateOrganization = async (event: FormEvent<HTMLFormElement>) => {
+  const handleCreateBoard = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const title = newBoardTitle.trim();
+    if (!selectedOrgId || !title) return;
+
+    setCreateBoardError("");
+    setIsCreatingBoard(true);
+    try {
+      const board = await createBoard(selectedOrgId, title);
+      setNewBoardTitle("");
+      setShowCreateBoard(false);
+      window.dispatchEvent(new Event("stackit:boards-changed"));
+      onClose();
+      navigate(`/board/${board.id}`);
+    } catch (error) {
+      setCreateBoardError(
+        error instanceof Error ? error.message : "Unable to create this board.",
+      );
+    } finally {
+      setIsCreatingBoard(false);
+    }
+  };
+
+  const handleCreateOrganization = async (
+    event: FormEvent<HTMLFormElement>,
+  ) => {
     event.preventDefault();
     const name = workspaceName.trim();
     if (!name) return;
@@ -274,9 +305,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               aria-label="Choose workspace"
               aria-haspopup="listbox"
               aria-expanded={isWorkspaceMenuOpen}
-              onClick={() =>
-                setIsWorkspaceMenuOpen((isOpen) => !isOpen)
-              }
+              onClick={() => setIsWorkspaceMenuOpen((isOpen) => !isOpen)}
             >
               <ChevronDown size={15} />
             </button>
@@ -339,9 +368,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         ) : organizationsError ? (
           <div className="sidebar-state sidebar-state-error" role="alert">
             <span>{organizationsError}</span>
-            <button
-              onClick={() => setOrganizationsRetry((retry) => retry + 1)}
-            >
+            <button onClick={() => setOrganizationsRetry((retry) => retry + 1)}>
               Retry
             </button>
           </div>
@@ -380,7 +407,86 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             </Link>
           ))
         )}
+        {!isLoadingOrganizations &&
+          !isLoadingBoards &&
+          !organizationsError &&
+          !boardsError &&
+          selectedOrganization && (
+            <button
+              type="button"
+              className="recent-board recent-board-add"
+              onClick={() => {
+                setCreateBoardError("");
+                setShowCreateBoard(true);
+              }}
+            >
+              <span>Add new board</span>
+              <Plus size={15} aria-hidden="true" />
+            </button>
+          )}
       </nav>
+      {showCreateBoard && (
+        <div
+          className="modal-backdrop sidebar-modal-backdrop"
+          onClick={() => !isCreatingBoard && setShowCreateBoard(false)}
+        >
+          <section
+            className="sidebar-form-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="sidebar-create-board-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="sidebar-form-header">
+              <h3 id="sidebar-create-board-title">Create board</h3>
+              <button
+                type="button"
+                className="icon-button"
+                onClick={() => setShowCreateBoard(false)}
+                disabled={isCreatingBoard}
+                aria-label="Close create board dialog"
+              >
+                ×
+              </button>
+            </div>
+            <form onSubmit={handleCreateBoard} className="sidebar-form">
+              <label>
+                <span>Board name</span>
+                <input
+                  value={newBoardTitle}
+                  onChange={(event) => setNewBoardTitle(event.target.value)}
+                  placeholder="Product launch"
+                  autoFocus
+                  required
+                  maxLength={120}
+                />
+              </label>
+              {createBoardError && (
+                <p className="form-error" role="alert">
+                  {createBoardError}
+                </p>
+              )}
+              <div className="sidebar-form-actions">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => setShowCreateBoard(false)}
+                  disabled={isCreatingBoard}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="primary-button"
+                  disabled={isCreatingBoard || !newBoardTitle.trim()}
+                >
+                  {isCreatingBoard ? "Creating..." : "Create board"}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
       {showWorkspaceModal && (
         <div
           className="modal-backdrop sidebar-modal-backdrop"
@@ -415,7 +521,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <span>Description</span>
                 <textarea
                   value={workspaceDescription}
-                  onChange={(event) => setWorkspaceDescription(event.target.value)}
+                  onChange={(event) =>
+                    setWorkspaceDescription(event.target.value)
+                  }
                   placeholder="Workspace for our team"
                 />
               </label>
