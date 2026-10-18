@@ -1,4 +1,4 @@
-import { Bell, Menu, Sparkles, Users } from "lucide-react";
+import { Bell, Menu, Plus, Sparkles, Trash2, Users } from "lucide-react";
 import { useNavigate } from "react-router";
 
 type BoardTopbarProps = {
@@ -51,10 +51,12 @@ export function BoardTopbar({
 export function BoardHeader({
   title = "Board",
   onRename,
+  onCreateBoard,
   onDelete,
 }: {
   title?: string;
   onRename?: () => void;
+  onCreateBoard?: () => void;
   onDelete?: () => void;
 }) {
   return (
@@ -72,9 +74,14 @@ export function BoardHeader({
             <Users size={16} /> Rename board
           </button>
         )}
+        {onCreateBoard && (
+          <button className="share-button" onClick={onCreateBoard}>
+            <Plus size={15} /> New board
+          </button>
+        )}
         {onDelete && (
           <button className="share-button danger" onClick={onDelete}>
-            Delete board
+            <Trash2 size={15} /> Delete board
           </button>
         )}
         <button className="share-button">

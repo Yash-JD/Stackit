@@ -146,9 +146,12 @@ export function CardDetail({
   onEdit?: () => void;
 }) {
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop centered-modal-backdrop" onClick={onClose}>
       <aside
         className="card-detail"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="card-detail-title"
         onClick={(event) => event.stopPropagation()}
       >
         <button
@@ -162,7 +165,7 @@ export function CardDetail({
           <span className={`label-mark label-${card.label.toLowerCase()}`} />
           {card.label}
         </div>
-        <h2>{card.title}</h2>
+        <h2 id="card-detail-title">{card.title}</h2>
         <p className="detail-caption">In Product launch</p>
         <div className="detail-section">
           <h4>Description</h4>

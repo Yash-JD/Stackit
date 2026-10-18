@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import "./index.css";
 import { Menu } from "lucide-react";
 import {
@@ -12,6 +12,7 @@ import {
 } from "react-router";
 import { useAuth } from "./auth";
 import {
+  createBoard,
   createIssue,
   createSection,
   deleteBoard,
@@ -30,6 +31,14 @@ import { BoardToolbar } from "./components/BoardToolbar";
 import { Sidebar } from "./components/Sidebar";
 import type { BoardColumn, Card, CardLabel } from "./types";
 import type { BoardSummary, Organization } from "./api";
+
+type BoardDialog =
+  | { type: "rename-board" }
+  | { type: "create-board" }
+  | { type: "create-card"; columnId: string }
+  | { type: "edit-card"; card: Card }
+  | { type: "delete-board" }
+  | { type: "delete-card"; card: Card };
 
 export function App() {
   return (
@@ -51,8 +60,127 @@ function ProtectedRoute() {
   return isAuthenticated ? <Outlet /> : <Navigate to="/signin" replace />;
 }
 
+function CreateBoardDialog({
+  organizations,
+  initialOrganizationId,
+  onClose,
+  onCreated,
+}: {
+  organizations: Organization[];
+  initialOrganizationId?: string;
+  onClose: () => void;
+  onCreated: (board: BoardSummary) => void;
+}) {
+  const [organizationId, setOrganizationId] = useState(
+    initialOrganizationId ?? organizations[0]?.id ?? "",
+  );
+  const [title, setTitle] = useState("");
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!organizationId || !title.trim()) return;
+
+    setError("");
+    setIsSubmitting(true);
+    try {
+      const board = await createBoard(organizationId, title.trim());
+      onCreated(board);
+    } catch (createError) {
+      setError(
+        createError instanceof Error
+          ? createError.message
+          : "Unable to create this board.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      className="modal-backdrop sidebar-modal-backdrop"
+      onClick={() => !isSubmitting && onClose()}
+    >
+      <section
+        className="sidebar-form-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="create-board-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="sidebar-form-header">
+          <h3 id="create-board-title">Create board</h3>
+          <button
+            type="button"
+            className="icon-button"
+            onClick={onClose}
+            disabled={isSubmitting}
+            aria-label="Close create board dialog"
+          >
+            ×
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="sidebar-form">
+          {organizations.length > 1 && (
+            <label>
+              <span>Workspace</span>
+              <select
+                className="dialog-select"
+                value={organizationId}
+                onChange={(event) => setOrganizationId(event.target.value)}
+              >
+                {organizations.map((organization) => (
+                  <option key={organization.id} value={organization.id}>
+                    {organization.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <label>
+            <span>Board name</span>
+            <input
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              placeholder="Product launch"
+              required
+              autoFocus
+              maxLength={120}
+            />
+          </label>
+          {error && (
+            <p className="form-error" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="sidebar-form-actions">
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="primary-button"
+              disabled={isSubmitting || !organizationId || !title.trim()}
+            >
+              {isSubmitting ? "Creating..." : "Create board"}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  );
+}
+
 function WorkspaceHome() {
   const [showSidebar, setShowSidebar] = useState(false);
+  const [showCreateBoard, setShowCreateBoard] = useState(false);
   const [workspaces, setWorkspaces] = useState<
     Array<{ organization: Organization; boards: BoardSummary[] }>
   >([]);
@@ -122,9 +250,20 @@ function WorkspaceHome() {
             <p>Choose a board to continue, or create one for your team.</p>
           </div>
           {!isLoading && !error && (
-            <span className="workspace-board-total">
-              {boardCount} {boardCount === 1 ? "board" : "boards"}
-            </span>
+            <div className="workspace-home-actions">
+              <span className="workspace-board-total">
+                {boardCount} {boardCount === 1 ? "board" : "boards"}
+              </span>
+              {workspaces.length > 0 && (
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={() => setShowCreateBoard(true)}
+                >
+                  New board
+                </button>
+              )}
+            </div>
           )}
         </header>
         {isLoading ? (
@@ -182,8 +321,8 @@ function WorkspaceHome() {
                   </div>
                 ) : (
                   <p className="workspace-no-boards">
-                    No boards in this workspace yet. Use “New board” in the
-                    sidebar to create one.
+                    No boards in this workspace yet. Select “New board” above
+                    to create one.
                   </p>
                 )}
               </section>
@@ -191,6 +330,17 @@ function WorkspaceHome() {
           </div>
         )}
       </main>
+      {showCreateBoard && (
+        <CreateBoardDialog
+          organizations={workspaces.map(({ organization }) => organization)}
+          onClose={() => setShowCreateBoard(false)}
+          onCreated={() => {
+            setShowCreateBoard(false);
+            window.dispatchEvent(new Event("stackit:boards-changed"));
+            void loadWorkspaceBoards();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -200,6 +350,7 @@ function Board() {
   const { boardId } = useParams();
   const [columns, setColumns] = useState<BoardColumn[]>([]);
   const [boardTitle, setBoardTitle] = useState("Board");
+  const [boardOrganizationId, setBoardOrganizationId] = useState("");
   const [query, setQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<"all" | CardLabel>("all");
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
@@ -208,6 +359,11 @@ function Board() {
   const [newListTitle, setNewListTitle] = useState("");
   const [isLoadingBoard, setIsLoadingBoard] = useState(true);
   const [boardError, setBoardError] = useState("");
+  const [dialog, setDialog] = useState<BoardDialog | null>(null);
+  const [dialogTitle, setDialogTitle] = useState("");
+  const [dialogDescription, setDialogDescription] = useState("");
+  const [dialogError, setDialogError] = useState("");
+  const [isSubmittingDialog, setIsSubmittingDialog] = useState(false);
 
   const loadBoard = useCallback(async () => {
     if (!boardId) return;
@@ -263,16 +419,19 @@ function Board() {
         );
 
         setBoardTitle(matchingBoard.title);
+        setBoardOrganizationId(matchingBoard.orgId);
         setColumns(nextColumns);
         return;
       }
 
       setColumns([]);
       setBoardTitle("Board");
+      setBoardOrganizationId("");
       setBoardError("This board could not be found.");
     } catch (error) {
       setColumns([]);
       setBoardTitle("Board");
+      setBoardOrganizationId("");
       setBoardError(
         error instanceof Error ? error.message : "Unable to load board data.",
       );
@@ -307,54 +466,108 @@ function Board() {
     [activeFilter, columns, query],
   );
 
-  const handleBoardRename = async () => {
-    if (!boardId) return;
-
-    const nextTitle = window.prompt("Rename board", boardTitle);
-    if (!nextTitle?.trim()) return;
-
-    try {
-      await renameBoard(boardId, nextTitle.trim());
-      setBoardTitle(nextTitle.trim());
-      await loadBoard();
-    } catch (error) {
-      setBoardError(
-        error instanceof Error ? error.message : "Unable to rename this board.",
-      );
+  const openDialog = (nextDialog: BoardDialog) => {
+    setDialog(nextDialog);
+    setDialogError("");
+    if (nextDialog.type === "rename-board") {
+      setDialogTitle(boardTitle);
+      setDialogDescription("");
+    } else if (nextDialog.type === "create-card") {
+      setDialogTitle("");
+      setDialogDescription("");
+    } else if (nextDialog.type === "edit-card") {
+      setDialogTitle(nextDialog.card.title);
+      setDialogDescription(nextDialog.card.description);
     }
   };
 
-  const handleBoardDelete = async () => {
-    if (!boardId) return;
+  const handleDialogSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!dialog) return;
 
-    const confirmed = window.confirm("Delete this board? This action cannot be undone.");
-    if (!confirmed) return;
+    const title = dialogTitle.trim();
+    if (
+      (dialog.type === "rename-board" ||
+        dialog.type === "create-board" ||
+        dialog.type === "create-card" ||
+        dialog.type === "edit-card") &&
+      !title
+    ) {
+      setDialogError("A title is required.");
+      return;
+    }
 
+    setDialogError("");
+    setIsSubmittingDialog(true);
     try {
-      await deleteBoard(boardId);
-      navigate("/", { replace: true });
+      switch (dialog.type) {
+        case "rename-board":
+          if (!boardId) return;
+          await renameBoard(boardId, title);
+          setBoardTitle(title);
+          break;
+        case "create-board": {
+          if (!boardOrganizationId) {
+            setDialogError("Unable to determine this board's workspace.");
+            return;
+          }
+          const newBoard = await createBoard(boardOrganizationId, title);
+          setDialog(null);
+          window.dispatchEvent(new Event("stackit:boards-changed"));
+          navigate(`/board/${newBoard.id}`);
+          return;
+        }
+        case "create-card":
+          await createIssue(
+            dialog.columnId,
+            title,
+            dialogDescription.trim() || "No description added yet.",
+          );
+          break;
+        case "edit-card":
+          await updateIssue(
+            dialog.card.id,
+            title,
+            dialogDescription.trim() || "No description added yet.",
+          );
+          setSelectedCard(null);
+          break;
+        default:
+          return;
+      }
+      setDialog(null);
+      await loadBoard();
     } catch (error) {
-      setBoardError(
-        error instanceof Error ? error.message : "Unable to delete this board.",
+      setDialogError(
+        error instanceof Error ? error.message : "Unable to save these changes.",
       );
+    } finally {
+      setIsSubmittingDialog(false);
     }
   };
 
-  const addCard = async (columnId: string) => {
-    const title = window.prompt("Card title");
-    if (!title?.trim()) return;
-
-    const description =
-      window.prompt("Card description", "No description added yet.") ??
-      "No description added yet.";
-
+  const handleDialogConfirm = async () => {
+    if (!dialog) return;
+    setDialogError("");
+    setIsSubmittingDialog(true);
     try {
-      await createIssue(columnId, title.trim(), description.trim() || "No description added yet.");
-      await loadBoard();
+      if (dialog.type === "delete-board") {
+        if (!boardId) return;
+        await deleteBoard(boardId);
+        setDialog(null);
+        navigate("/", { replace: true });
+      } else if (dialog.type === "delete-card") {
+        await deleteIssue(dialog.card.id);
+        setDialog(null);
+        setSelectedCard(null);
+        await loadBoard();
+      }
     } catch (error) {
-      setBoardError(
-        error instanceof Error ? error.message : "Unable to create this card.",
+      setDialogError(
+        error instanceof Error ? error.message : "Unable to complete this action.",
       );
+    } finally {
+      setIsSubmittingDialog(false);
     }
   };
 
@@ -377,39 +590,6 @@ function Board() {
     }
   };
 
-  const handleEditCard = async (card: Card) => {
-    const title = window.prompt("Edit card title", card.title);
-    if (!title?.trim()) return;
-
-    const description =
-      window.prompt("Edit card description", card.description) ?? card.description;
-
-    try {
-      await updateIssue(card.id, title.trim(), description.trim() || "No description added yet.");
-      setSelectedCard(null);
-      await loadBoard();
-    } catch (error) {
-      setBoardError(
-        error instanceof Error ? error.message : "Unable to update this card.",
-      );
-    }
-  };
-
-  const handleDeleteCard = async (card: Card) => {
-    const confirmed = window.confirm(`Delete "${card.title}"?`);
-    if (!confirmed) return;
-
-    try {
-      await deleteIssue(card.id);
-      setSelectedCard(null);
-      await loadBoard();
-    } catch (error) {
-      setBoardError(
-        error instanceof Error ? error.message : "Unable to delete this card.",
-      );
-    }
-  };
-
   return (
     <div className="workspace-shell">
       <Sidebar isOpen={showSidebar} onClose={() => setShowSidebar(false)} />
@@ -421,8 +601,9 @@ function Board() {
         />
         <BoardHeader
           title={boardTitle}
-          onRename={handleBoardRename}
-          onDelete={handleBoardDelete}
+          onRename={() => openDialog({ type: "rename-board" })}
+          onCreateBoard={() => openDialog({ type: "create-board" })}
+          onDelete={() => openDialog({ type: "delete-board" })}
         />
         <BoardToolbar
           query={query}
@@ -439,7 +620,9 @@ function Board() {
         ) : (
           <BoardCanvas
             columns={visibleColumns}
-            onAddCard={addCard}
+            onAddCard={(columnId) =>
+              openDialog({ type: "create-card", columnId })
+            }
             onSelectCard={setSelectedCard}
             showAddList={showAddList}
             newListTitle={newListTitle}
@@ -454,9 +637,150 @@ function Board() {
         <CardDetail
           card={selectedCard}
           onClose={() => setSelectedCard(null)}
-          onEdit={() => void handleEditCard(selectedCard)}
-          onDelete={() => void handleDeleteCard(selectedCard)}
+          onEdit={() => {
+            const card = selectedCard;
+            setSelectedCard(null);
+            openDialog({ type: "edit-card", card });
+          }}
+          onDelete={() => {
+            const card = selectedCard;
+            setSelectedCard(null);
+            openDialog({ type: "delete-card", card });
+          }}
         />
+      )}
+      {dialog && (
+        <div
+          className="modal-backdrop centered-modal-backdrop"
+          onClick={() => !isSubmittingDialog && setDialog(null)}
+        >
+          <section
+            className="centered-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="board-dialog-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="sidebar-form-header">
+              <h3 id="board-dialog-title">
+                {dialog.type === "rename-board"
+                  ? "Rename board"
+                  : dialog.type === "create-board"
+                    ? "Create board"
+                  : dialog.type === "create-card"
+                    ? "Create card"
+                    : dialog.type === "edit-card"
+                      ? "Edit card"
+                      : dialog.type === "delete-board"
+                        ? "Delete board"
+                        : "Delete card"}
+              </h3>
+              <button
+                type="button"
+                className="icon-button"
+                onClick={() => setDialog(null)}
+                disabled={isSubmittingDialog}
+                aria-label="Close dialog"
+              >
+                ×
+              </button>
+            </div>
+            {dialog.type === "delete-board" ||
+            dialog.type === "delete-card" ? (
+              <div className="sidebar-form">
+                <p className="dialog-description">
+                  {dialog.type === "delete-board"
+                    ? "Delete this board? This action cannot be undone."
+                    : `Delete "${dialog.card.title}"? This action cannot be undone.`}
+                </p>
+                {dialogError && (
+                  <p className="form-error" role="alert">
+                    {dialogError}
+                  </p>
+                )}
+                <div className="sidebar-form-actions">
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => setDialog(null)}
+                    disabled={isSubmittingDialog}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="danger-button"
+                    onClick={() => void handleDialogConfirm()}
+                    disabled={isSubmittingDialog}
+                  >
+                    {isSubmittingDialog ? "Deleting..." : "Delete"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleDialogSubmit} className="sidebar-form">
+                <label>
+                  <span>
+                    {dialog.type === "rename-board" ||
+                    dialog.type === "create-board"
+                      ? "Board name"
+                      : "Card title"}
+                  </span>
+                  <input
+                    value={dialogTitle}
+                    onChange={(event) => setDialogTitle(event.target.value)}
+                    required
+                    autoFocus
+                    maxLength={120}
+                  />
+                </label>
+                {dialog.type !== "rename-board" &&
+                  dialog.type !== "create-board" && (
+                  <label>
+                    <span>Description</span>
+                    <textarea
+                      value={dialogDescription}
+                      onChange={(event) =>
+                        setDialogDescription(event.target.value)
+                      }
+                      placeholder="Add a description"
+                    />
+                  </label>
+                )}
+                {dialogError && (
+                  <p className="form-error" role="alert">
+                    {dialogError}
+                  </p>
+                )}
+                <div className="sidebar-form-actions">
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => setDialog(null)}
+                    disabled={isSubmittingDialog}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="primary-button"
+                    disabled={isSubmittingDialog || !dialogTitle.trim()}
+                  >
+                    {isSubmittingDialog
+                      ? "Saving..."
+                      : dialog.type === "rename-board"
+                        ? "Save changes"
+                        : dialog.type === "create-card"
+                          ? "Create card"
+                          : dialog.type === "create-board"
+                            ? "Create board"
+                          : "Save changes"}
+                  </button>
+                </div>
+              </form>
+            )}
+          </section>
+        </div>
       )}
     </div>
   );

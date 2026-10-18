@@ -253,7 +253,7 @@ Phase 6 adds board CRUD operations, including creating and editing sections and 
 ### What changed
 
 - Wired board-level actions to the backend API: rename and delete board from the board header.
-- Added a `New board` action in the sidebar for creating a board in the selected workspace.
+- Added a `New board` action beside board rename/delete controls and on the boards home page; board creation refreshes the sidebar board list.
 - Added list creation from the board canvas using the backend `createSection` endpoint.
 - Added card creation, card editing, and card deletion by calling the issue endpoints from the board UI.
 - Reused the same async loading pattern after mutations so the board screen refreshes from the server immediately.

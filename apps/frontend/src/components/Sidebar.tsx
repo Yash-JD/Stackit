@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 import {
-  createBoard,
   createOrganization,
   deleteOrganization,
   getBoards,
@@ -46,12 +45,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [workspaceDescription, setWorkspaceDescription] = useState(
     "Workspace for our team",
   );
-  const [showBoardModal, setShowBoardModal] = useState(false);
-  const [boardTitle, setBoardTitle] = useState("");
   const [isCreatingOrganization, setIsCreatingOrganization] = useState(false);
-  const [isCreatingBoard, setIsCreatingBoard] = useState(false);
   const [createOrganizationError, setCreateOrganizationError] = useState("");
-  const [createBoardError, setCreateBoardError] = useState("");
   const [showOrganizationSettings, setShowOrganizationSettings] =
     useState(false);
   const [organizationName, setOrganizationName] = useState("");
@@ -114,7 +109,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     const loadBoards = async () => {
       setIsLoadingBoards(true);
       setBoardsError("");
-
       try {
         const result = await getBoards(selectedOrgId);
         if (isCurrent) setBoards(result);
@@ -134,6 +128,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       isCurrent = false;
     };
   }, [selectedOrgId, boardsRetry]);
+
+  useEffect(() => {
+    const refreshBoards = () => setBoardsRetry((retry) => retry + 1);
+    window.addEventListener("stackit:boards-changed", refreshBoards);
+    return () =>
+      window.removeEventListener("stackit:boards-changed", refreshBoards);
+  }, []);
 
   const selectedOrganization = organizations.find(
     (organization) => organization.id === selectedOrgId,
@@ -167,34 +168,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       );
     } finally {
       setIsCreatingOrganization(false);
-    }
-  };
-
-  const handleCreateBoard = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!selectedOrgId) {
-      setCreateBoardError("Select a workspace before creating a board.");
-      return;
-    }
-
-    const title = boardTitle.trim();
-    if (!title) return;
-
-    setCreateBoardError("");
-    setIsCreatingBoard(true);
-    try {
-      const newBoard = await createBoard(selectedOrgId, title);
-      setBoards((current) => [newBoard, ...current]);
-      setBoardTitle("");
-      setShowBoardModal(false);
-      navigate(`/board/${newBoard.id}`);
-      onClose();
-    } catch (error) {
-      setCreateBoardError(
-        error instanceof Error ? error.message : "Unable to create this board.",
-      );
-    } finally {
-      setIsCreatingBoard(false);
     }
   };
 
@@ -345,19 +318,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           type="button"
           onClick={() => navigate("/")}
         >
-          <LayoutGrid size={17} /> Boards{" "}
-          <span className="nav-count">{boards.length}</span>
-        </button>
-        <button
-          type="button"
-          className="nav-item create-board-action"
-          onClick={() => {
-            setCreateBoardError("");
-            setShowBoardModal(true);
-          }}
-          disabled={!selectedOrgId}
-        >
-          <Sparkles size={17} /> New board
+          <LayoutGrid size={17} /> Boards
         </button>
         <button className="nav-item">
           <Users size={17} /> Members <span className="nav-count">8</span>
@@ -384,13 +345,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               Retry
             </button>
           </div>
-        ) : boardsError ? (
-          <div className="sidebar-state sidebar-state-error" role="alert">
-            <span>{boardsError}</span>
-            <button onClick={() => setBoardsRetry((retry) => retry + 1)}>
-              Retry
-            </button>
-          </div>
         ) : organizations.length === 0 ? (
           <div className="sidebar-state sidebar-state-empty">
             <span>Join or create a workspace to see boards.</span>
@@ -404,19 +358,15 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               Create workspace
             </button>
           </div>
-        ) : boards.length === 0 ? (
-          <div className="sidebar-state sidebar-state-empty">
-            <span>No boards in this workspace yet.</span>
-            <button
-              type="button"
-              onClick={() => {
-                setCreateBoardError("");
-                setShowBoardModal(true);
-              }}
-            >
-              Create board
+        ) : boardsError ? (
+          <div className="sidebar-state sidebar-state-error" role="alert">
+            <span>{boardsError}</span>
+            <button onClick={() => setBoardsRetry((retry) => retry + 1)}>
+              Retry
             </button>
           </div>
+        ) : boards.length === 0 ? (
+          <p className="sidebar-state">No boards in this workspace yet.</p>
         ) : (
           boards.map((board, index) => (
             <Link
@@ -489,63 +439,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   disabled={isCreatingOrganization || !workspaceName.trim()}
                 >
                   {isCreatingOrganization ? "Creating..." : "Create workspace"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {showBoardModal && (
-        <div
-          className="modal-backdrop sidebar-modal-backdrop"
-          onClick={() => setShowBoardModal(false)}
-        >
-          <div
-            className="sidebar-form-modal"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="sidebar-form-header">
-              <h3>Create board</h3>
-              <button
-                type="button"
-                className="icon-button"
-                onClick={() => setShowBoardModal(false)}
-                aria-label="Close board form"
-              >
-                ×
-              </button>
-            </div>
-            <form onSubmit={handleCreateBoard} className="sidebar-form">
-              <label>
-                <span>Board title</span>
-                <input
-                  value={boardTitle}
-                  onChange={(event) => setBoardTitle(event.target.value)}
-                  placeholder="Product launch"
-                  autoFocus
-                />
-              </label>
-              {createBoardError && (
-                <p className="form-error" role="alert">
-                  {createBoardError}
-                </p>
-              )}
-              <div className="sidebar-form-actions">
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={() => setShowBoardModal(false)}
-                  disabled={isCreatingBoard}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="primary-button"
-                  disabled={isCreatingBoard || !boardTitle.trim()}
-                >
-                  {isCreatingBoard ? "Creating..." : "Create board"}
                 </button>
               </div>
             </form>
