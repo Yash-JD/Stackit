@@ -2,10 +2,16 @@ import { Bell, Menu, Sparkles, Users } from "lucide-react";
 import { useNavigate } from "react-router";
 
 type BoardTopbarProps = {
+  boardId?: string;
+  boardTitle?: string;
   onMenuClick: () => void;
 };
 
-export function BoardTopbar({ onMenuClick }: BoardTopbarProps) {
+export function BoardTopbar({
+  boardId,
+  boardTitle,
+  onMenuClick,
+}: BoardTopbarProps) {
   const navigate = useNavigate();
 
   return (
@@ -18,11 +24,11 @@ export function BoardTopbar({ onMenuClick }: BoardTopbarProps) {
         <Menu size={19} />
       </button>
       <div className="breadcrumbs">
-        <button onClick={() => navigate("/board/product-launch")}>
+        <button onClick={() => navigate(boardId ? `/board/${boardId}` : "/") }>
           Boards
         </button>
         <span>/</span>
-        <strong>Product launch</strong>
+        <strong>{boardTitle ?? "Board"}</strong>
       </div>
       <div className="topbar-actions">
         <div className="presence-stack">
@@ -42,14 +48,14 @@ export function BoardTopbar({ onMenuClick }: BoardTopbarProps) {
   );
 }
 
-export function BoardHeader() {
+export function BoardHeader({ title = "Board" }: { title?: string }) {
   return (
     <section className="board-header">
       <div>
         <div className="eyebrow">
           Product operations <span className="status-dot" /> Live workspace
         </div>
-        <h1>Product launch</h1>
+        <h1>{title}</h1>
         <p>Turn the next big idea into something people can use.</p>
       </div>
       <button className="share-button">

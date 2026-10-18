@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./index.css";
-import { Navigate, Outlet, Route, Routes } from "react-router";
+import { Navigate, Outlet, Route, Routes, useParams } from "react-router";
 import { useAuth } from "./auth";
-import { initialColumns } from "./board-data";
+import { getBoardSections, getIssuesForSection, getOrganizations } from "./api";
 import { SigninPage, SignupPage } from "./components/AuthPage";
 import { BoardCanvas, CardDetail } from "./components/BoardCanvas";
 import { BoardHeader, BoardTopbar } from "./components/BoardTopbar";
@@ -31,16 +31,106 @@ function ProtectedRoute() {
 }
 
 function Board() {
-  // Board owns the state because several child components need to read or update it.
-  const [columns, setColumns] = useState<BoardColumn[]>(initialColumns);
+  const { boardId } = useParams();
+  const [columns, setColumns] = useState<BoardColumn[]>([]);
+  const [boardTitle, setBoardTitle] = useState("Board");
   const [query, setQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<"all" | CardLabel>("all");
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
   const [showAddList, setShowAddList] = useState(false);
   const [newListTitle, setNewListTitle] = useState("");
+  const [isLoadingBoard, setIsLoadingBoard] = useState(true);
+  const [boardError, setBoardError] = useState("");
 
-  // visibleColumns is derived from state; it should not be stored separately.
+  useEffect(() => {
+    let isCurrent = true;
+
+    const loadBoard = async () => {
+      if (!boardId) return;
+
+      setIsLoadingBoard(true);
+      setBoardError("");
+
+      try {
+        const organizations = await getOrganizations();
+        if (!isCurrent) return;
+
+        for (const organization of organizations) {
+          const sectionsResponse = await getBoardSections(organization.id);
+          const matchingBoard = sectionsResponse.find(
+            (board) => board.id === boardId,
+          );
+
+          if (!matchingBoard) continue;
+
+          const sectionColors = [
+            "#8d9baa",
+            "#edb44f",
+            "#6ec5b8",
+            "#88a9df",
+          ];
+          const labels: CardLabel[] = ["Research", "Build", "Design"];
+
+          const nextColumns = await Promise.all(
+            matchingBoard.sections
+              .filter((section) => !section.isDeleted)
+              .map(async (section, index) => {
+                const issues = await getIssuesForSection(section.id);
+                const color = sectionColors[index % sectionColors.length] ?? "#8d9baa";
+
+                return {
+                  id: section.id,
+                  title: section.title,
+                  color,
+                  cards: issues
+                    .filter((issue) => !issue.isDeleted)
+                    .map((issue, issueIndex) => {
+                      const label =
+                        labels[issueIndex % labels.length] ?? "Build";
+
+                      return {
+                        id: issue.id,
+                        title: issue.title,
+                        label,
+                        description: issue.description || "No description added yet.",
+                      };
+                    }),
+                } satisfies BoardColumn;
+              }),
+          );
+
+          if (isCurrent) {
+            setBoardTitle(matchingBoard.title);
+            setColumns(nextColumns);
+          }
+          return;
+        }
+
+        if (isCurrent) {
+          setColumns([]);
+          setBoardTitle("Board");
+          setBoardError("This board could not be found.");
+        }
+      } catch (error) {
+        if (!isCurrent) return;
+        setColumns([]);
+        setBoardTitle("Board");
+        setBoardError(
+          error instanceof Error ? error.message : "Unable to load board data.",
+        );
+      } finally {
+        if (isCurrent) setIsLoadingBoard(false);
+      }
+    };
+
+    void loadBoard();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [boardId]);
+
   const visibleColumns = useMemo(
     () =>
       columns.map((column) => ({
@@ -98,26 +188,36 @@ function Board() {
       <Sidebar isOpen={showSidebar} onClose={() => setShowSidebar(false)} />
       <main className="board-shell">
         <BoardTopbar
+          boardId={boardId}
+          boardTitle={boardTitle}
           onMenuClick={() => setShowSidebar((current) => !current)}
         />
-        <BoardHeader />
+        <BoardHeader title={boardTitle} />
         <BoardToolbar
           query={query}
           activeFilter={activeFilter}
           onQueryChange={setQuery}
           onFilterChange={setActiveFilter}
         />
-        <BoardCanvas
-          columns={visibleColumns}
-          onAddCard={addCard}
-          onSelectCard={setSelectedCard}
-          showAddList={showAddList}
-          newListTitle={newListTitle}
-          onNewListTitleChange={setNewListTitle}
-          onShowAddList={() => setShowAddList(true)}
-          onAddList={addList}
-          onCancelAddList={() => setShowAddList(false)}
-        />
+        {isLoadingBoard ? (
+          <div className="board-state">Loading board...</div>
+        ) : boardError ? (
+          <div className="board-state board-state-error" role="alert">
+            {boardError}
+          </div>
+        ) : (
+          <BoardCanvas
+            columns={visibleColumns}
+            onAddCard={addCard}
+            onSelectCard={setSelectedCard}
+            showAddList={showAddList}
+            newListTitle={newListTitle}
+            onNewListTitleChange={setNewListTitle}
+            onShowAddList={() => setShowAddList(true)}
+            onAddList={addList}
+            onCancelAddList={() => setShowAddList(false)}
+          />
+        )}
       </main>
       {selectedCard && (
         <CardDetail card={selectedCard} onClose={() => setSelectedCard(null)} />

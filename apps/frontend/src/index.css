@@ -241,6 +241,13 @@ button {
   min-width: 0;
   flex: 1;
 }
+.board-state {
+  padding: 32px 24px;
+  color: #8fa1a5;
+}
+.board-state-error {
+  color: #f0b7a9;
+}
 .topbar {
   display: flex;
   align-items: center;

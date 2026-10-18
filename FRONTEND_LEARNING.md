@@ -200,3 +200,50 @@ The organization list is loaded first. Selecting an organization updates `select
 ### Next phase
 
 Phase 5 replaces `initialColumns` with the selected board's real sections and issues.
+
+## Phase 5: Real Board Rendering
+
+### What changed
+
+- Replaced the hardcoded board data in the main board view with data from the backend.
+- Loaded the selected board by resolving the current route's `boardId` against the signed-in user's organizations.
+- Fetched the sections and issues for that board and transformed the API response into the UI's column/card format.
+- Added loading and error states for board fetches while the board screen is still preparing its data.
+
+### Concepts learned
+
+#### Transforming API data into component data
+
+The backend sends sections and issues in a format that is useful for the database, but the UI expects `BoardColumn[]` with nested cards. This means the frontend is responsible for mapping backend records to display models.
+
+```ts
+const columns = sections.map((section, index) => ({
+  id: section.id,
+  title: section.title,
+  color: palette[index % palette.length],
+  cards: issues.map((issue) => ({
+    id: issue.id,
+    title: issue.title,
+    label: "Build",
+    description: issue.description,
+  })),
+}));
+```
+
+#### Loading data based on route params
+
+The board route uses a dynamic `boardId` path parameter. Once the route param resolves, the component requests the organization data and then finds the matching board and its sections.
+
+#### Error states for async UI
+
+When a board cannot be loaded or the backend rejects the request, the UI shows a clear error instead of silently leaving the board empty.
+
+### Important files
+
+- `apps/frontend/src/App.tsx`: board loading logic and board-column mapping
+- `apps/frontend/src/api.ts`: organization, section, and issue fetch functions
+- `apps/frontend/src/components/BoardTopbar.tsx`: dynamic board title in the header
+
+### Next phase
+
+Phase 6 adds board CRUD operations, including creating and editing sections and issues from the UI.

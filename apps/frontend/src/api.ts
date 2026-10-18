@@ -21,6 +21,22 @@ export type BoardSummary = {
   orgId: string;
 };
 
+export type SectionSummary = {
+  id: string;
+  title: string;
+  boardId: string;
+  isDeleted: boolean;
+};
+
+export type IssueSummary = {
+  id: string;
+  title: string;
+  description: string;
+  boardId: string;
+  sectionId: string;
+  isDeleted: boolean;
+};
+
 type ApiRequestOptions = RequestInit & {
   authenticated?: boolean;
 };
@@ -140,4 +156,38 @@ export async function getBoards(orgId: string) {
   }
 
   return boards;
+}
+
+export async function getBoardSections(orgId: string) {
+  const response = await apiRequest<
+    Array<{
+      id: string;
+      title: string;
+      orgId: string;
+      sections: SectionSummary[];
+    }>
+  >(`/api/v1/section?orgId=${encodeURIComponent(orgId)}`, {
+    authenticated: true,
+  });
+  const boards = response.data;
+
+  if (!Array.isArray(boards)) {
+    throw new Error("The server returned an invalid sections response");
+  }
+
+  return boards;
+}
+
+export async function getIssuesForSection(sectionId: string) {
+  const response = await apiRequest<IssueSummary[]>(
+    `/api/v1/issue/${encodeURIComponent(sectionId)}`,
+    { authenticated: true },
+  );
+  const issues = response.data;
+
+  if (!Array.isArray(issues)) {
+    throw new Error("The server returned an invalid issues response");
+  }
+
+  return issues;
 }
