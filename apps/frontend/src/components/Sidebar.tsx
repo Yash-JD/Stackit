@@ -1,11 +1,11 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   CircleHelp,
   ChevronDown,
   LayoutGrid,
-  MoreHorizontal,
   Plus,
   Settings,
+  UserRound,
   Users,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router";
@@ -15,9 +15,10 @@ import {
   deleteOrganization,
   getBoards,
   getOrganizations,
+  getProfile,
   updateOrganization,
+  type UserProfile,
 } from "../api";
-import { useAuth } from "../auth";
 import { StackitLogo } from "./StackitLogo";
 import { OrganizationMembersDialog } from "./OrganizationMembersDialog";
 
@@ -25,6 +26,8 @@ type SidebarProps = {
   isOpen: boolean;
   onClose: () => void;
   isCollapsed: boolean;
+  selectedOrgId: string;
+  onSelectOrganization: (organizationId: string) => void;
   onToggleCollapse: () => void;
 };
 
@@ -32,14 +35,17 @@ export function Sidebar({
   isOpen,
   onClose,
   isCollapsed,
+  selectedOrgId,
+  onSelectOrganization,
   onToggleCollapse,
 }: SidebarProps) {
-  const { logout } = useAuth();
   const navigate = useNavigate();
+  const workspacePickerRef = useRef<HTMLDivElement>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [profileError, setProfileError] = useState(false);
   const [organizations, setOrganizations] = useState<
     Awaited<ReturnType<typeof getOrganizations>>
   >([]);
-  const [selectedOrgId, setSelectedOrgId] = useState("");
   const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState(false);
   const [boards, setBoards] = useState<Awaited<ReturnType<typeof getBoards>>>(
     [],
@@ -85,11 +91,6 @@ export function Sidebar({
         if (!isCurrent) return;
 
         setOrganizations(result);
-        setSelectedOrgId((current) =>
-          result.some((organization) => organization.id === current)
-            ? current
-            : (result[0]?.id ?? ""),
-        );
       } catch (error) {
         if (!isCurrent) return;
         setOrganizationsError(
@@ -108,6 +109,67 @@ export function Sidebar({
       isCurrent = false;
     };
   }, [organizationsRetry]);
+
+  useEffect(() => {
+    let isCurrent = true;
+    void getProfile()
+      .then((profile) => {
+        if (isCurrent) {
+          setUserProfile(profile);
+          setProfileError(false);
+        }
+      })
+      .catch((error: unknown) => {
+        if (isCurrent) {
+          setProfileError(true);
+          console.error("Unable to load the signed-in user's profile:", error);
+        }
+      });
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const refreshProfile = () => {
+      void getProfile()
+        .then((profile) => {
+          setUserProfile(profile);
+          setProfileError(false);
+        })
+        .catch((error: unknown) => {
+          setProfileError(true);
+          console.error(
+            "Unable to refresh the signed-in user's profile:",
+            error,
+          );
+        });
+    };
+    window.addEventListener("stackit:profile-changed", refreshProfile);
+    return () =>
+      window.removeEventListener("stackit:profile-changed", refreshProfile);
+  }, []);
+
+  useEffect(() => {
+    if (!isWorkspaceMenuOpen) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (
+        event.target instanceof Node &&
+        !workspacePickerRef.current?.contains(event.target)
+      ) {
+        setIsWorkspaceMenuOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsWorkspaceMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [isWorkspaceMenuOpen]);
 
   useEffect(() => {
     let isCurrent = true;
@@ -211,7 +273,7 @@ export function Sidebar({
       );
 
       setOrganizations((current) => [newOrganization, ...current]);
-      setSelectedOrgId(newOrganization.id);
+      onSelectOrganization(newOrganization.id);
       setOrganizationsError("");
       setWorkspaceName("");
       setWorkspaceDescription("Workspace for our team");
@@ -291,7 +353,7 @@ export function Sidebar({
         (organization) => organization.id !== selectedOrganization.id,
       );
       setOrganizations(remainingOrganizations);
-      setSelectedOrgId(remainingOrganizations[0]?.id ?? "");
+      onSelectOrganization(remainingOrganizations[0]?.id ?? "");
       setShowOrganizationSettings(false);
       window.dispatchEvent(new Event("stackit:organizations-changed"));
       navigate("/", { replace: true });
@@ -327,7 +389,7 @@ export function Sidebar({
         <div className="workspace-avatar">
           {selectedOrganization?.name.charAt(0).toUpperCase() ?? "S"}
         </div>
-        <div className="workspace-picker">
+        <div className="workspace-picker" ref={workspacePickerRef}>
           {isLoadingOrganizations ? (
             <span>Loading workspaces...</span>
           ) : organizationsError ? (
@@ -367,7 +429,7 @@ export function Sidebar({
                   role="option"
                   aria-selected={organization.id === selectedOrgId}
                   onClick={() => {
-                    setSelectedOrgId(organization.id);
+                    onSelectOrganization(organization.id);
                     setIsWorkspaceMenuOpen(false);
                   }}
                 >
@@ -399,8 +461,7 @@ export function Sidebar({
           aria-label="Members"
           title={isCollapsed ? "Members" : undefined}
         >
-          <Users size={17} /> <span>Members</span>{" "}
-          <span className="nav-count">8</span>
+          <Users size={17} /> <span>Members</span>
         </button>
         <button
           className="nav-item"
@@ -730,14 +791,26 @@ export function Sidebar({
         <button className="nav-item">
           <CircleHelp size={17} /> <span>Help center</span>
         </button>
-        <button className="profile-row" onClick={logout}>
-          <div className="profile-avatar">Y</div>
-          <div>
-            <strong>Yash</strong>
-            <span>Log out</span>
+        <Link
+          className="profile-row"
+          to="/profile"
+          onClick={onClose}
+          aria-label="Open your profile"
+        >
+          <div className="profile-avatar">
+            <UserRound size={15} />
           </div>
-          <MoreHorizontal className="profile-more" size={17} />
-        </button>
+          <div>
+            <strong>
+              {userProfile?.name ??
+                (profileError ? "Profile unavailable" : "Loading profile...")}
+            </strong>
+            <span>
+              {userProfile?.email ??
+                (profileError ? "Open account settings" : "Account settings")}
+            </span>
+          </div>
+        </Link>
       </div>
     </aside>
   );

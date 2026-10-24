@@ -422,7 +422,7 @@ export function OrganizationMembersDialog({
             </section>
 
             <section className="members-section">
-              <h4>Workspace members {!isLoading && `(${members.length})`}</h4>
+              <h4>Workspace members</h4>
               {isLoading ? (
                 <p className="members-empty" role="status">
                   Loading members...
@@ -433,6 +433,11 @@ export function OrganizationMembersDialog({
                 <ul className="member-list">
                   {members.map((member) => {
                     const isSuperadmin = member.role === "superadmin";
+                    const isCurrentUser = member.isCurrentUser;
+                    const displayName =
+                      member.user.name ||
+                      member.user.email.split("@")[0] ||
+                      member.user.email;
                     const selectedBoards = boardSelections[member.userId] ?? [];
                     const savedBoards = member.boardMemberships
                       .map((grant) => grant.board.id)
@@ -443,13 +448,20 @@ export function OrganizationMembersDialog({
                     return (
                       <li className="member-row" key={member.userId}>
                         <span className="member-avatar">
-                          {member.user.email.charAt(0).toUpperCase()}
+                          {displayName.charAt(0).toUpperCase()}
                         </span>
-                        <span className="member-email">
-                          {member.user.email}
+                        <span className="member-identity">
+                          <strong>{displayName}</strong>
+                          <span className="member-email">
+                            {member.user.email}
+                          </span>
                         </span>
-                        {isSuperadmin ? (
-                          <span className="member-role">Superadmin</span>
+                        {isSuperadmin || isCurrentUser ? (
+                          <span className="member-role">
+                            {isSuperadmin
+                              ? "Superadmin"
+                              : `You · ${member.role}`}
+                          </span>
                         ) : (
                           <select
                             className="member-role-select"
@@ -470,6 +482,7 @@ export function OrganizationMembersDialog({
                           </select>
                         )}
                         {!isSuperadmin &&
+                          !isCurrentUser &&
                           (memberToRemove === member.userId ? (
                             <span className="member-confirm-actions">
                               <button

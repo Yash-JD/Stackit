@@ -75,6 +75,7 @@ export function SignupPage() {
   const [form, setForm] = useState({
     email: "",
     password: "",
+    name: "",
     profile: "",
     description: "",
   });
@@ -120,6 +121,16 @@ export function SignupPage() {
             onChange={(event) => updateField("email", event.target.value)}
             required
             autoComplete="email"
+          />
+        </label>
+        <label>
+          Name
+          <input
+            value={form.name}
+            onChange={(event) => updateField("name", event.target.value)}
+            required
+            maxLength={120}
+            autoComplete="name"
           />
         </label>
         <label>

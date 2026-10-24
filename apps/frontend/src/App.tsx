@@ -22,6 +22,7 @@ import { SigninPage, SignupPage } from "./components/AuthPage";
 import { BoardCanvas, CardDetail } from "./components/BoardCanvas";
 import { BoardHeader, BoardTopbar } from "./components/BoardTopbar";
 import { BoardToolbar } from "./components/BoardToolbar";
+import { ProfilePage } from "./components/ProfilePage";
 import { Sidebar } from "./components/Sidebar";
 import type { Card, CardLabel } from "./types";
 import type { BoardSummary, Organization } from "./api";
@@ -47,6 +48,7 @@ export function App() {
           <Route element={<WorkspaceLayout />}>
             <Route path="/" element={<WorkspaceHome />} />
             <Route path="/board/:boardId" element={<Board />} />
+            <Route path="/profile" element={<ProfilePage />} />
           </Route>
         </Route>
       </Routes>
@@ -61,12 +63,45 @@ function ProtectedRoute() {
 
 type WorkspaceLayoutContext = ReturnType<typeof useWorkspaceBoards> & {
   toggleSidebar: () => void;
+  selectedOrgId: string;
+  onSelectOrganization: (organizationId: string) => void;
 };
 
 function WorkspaceLayout() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const workspaceBoards = useWorkspaceBoards();
+  const [selectedOrgId, setSelectedOrgId] = useState(
+    () => localStorage.getItem("stackit_selected_org") ?? "",
+  );
+
+  useEffect(() => {
+    if (workspaceBoards.isLoading || workspaceBoards.workspaces.length === 0) {
+      if (
+        !workspaceBoards.isLoading &&
+        workspaceBoards.workspaces.length === 0
+      ) {
+        setSelectedOrgId("");
+        localStorage.removeItem("stackit_selected_org");
+      }
+      return;
+    }
+    if (
+      !workspaceBoards.workspaces.some(
+        ({ organization }) => organization.id === selectedOrgId,
+      )
+    ) {
+      const firstOrganizationId =
+        workspaceBoards.workspaces[0]?.organization.id ?? "";
+      setSelectedOrgId(firstOrganizationId);
+      localStorage.setItem("stackit_selected_org", firstOrganizationId);
+    }
+  }, [selectedOrgId, workspaceBoards.isLoading, workspaceBoards.workspaces]);
+
+  const handleSelectOrganization = (organizationId: string) => {
+    setSelectedOrgId(organizationId);
+    localStorage.setItem("stackit_selected_org", organizationId);
+  };
 
   return (
     <div
@@ -76,6 +111,8 @@ function WorkspaceLayout() {
         isOpen={showSidebar}
         onClose={() => setShowSidebar(false)}
         isCollapsed={isSidebarCollapsed}
+        selectedOrgId={selectedOrgId}
+        onSelectOrganization={handleSelectOrganization}
         onToggleCollapse={() =>
           setIsSidebarCollapsed((isCollapsed) => !isCollapsed)
         }
@@ -83,6 +120,8 @@ function WorkspaceLayout() {
       <Outlet
         context={{
           ...workspaceBoards,
+          selectedOrgId,
+          onSelectOrganization: handleSelectOrganization,
           toggleSidebar: () => setShowSidebar((current) => !current),
         }}
       />
@@ -209,8 +248,19 @@ function CreateBoardDialog({
 }
 
 function WorkspaceHome() {
-  const { toggleSidebar, workspaces, boardCount, isLoading, error, refresh } =
-    useOutletContext<WorkspaceLayoutContext>();
+  const {
+    toggleSidebar,
+    workspaces,
+    selectedOrgId,
+    isLoading,
+    error,
+    refresh,
+  } = useOutletContext<WorkspaceLayoutContext>();
+  const selectedWorkspace =
+    workspaces.find(({ organization }) => organization.id === selectedOrgId) ??
+    workspaces[0];
+  const visibleWorkspaces = selectedWorkspace ? [selectedWorkspace] : [];
+  const visibleBoardCount = selectedWorkspace?.boards.length ?? 0;
   const [showCreateBoard, setShowCreateBoard] = useState(false);
   const [createBoardOrganizationId, setCreateBoardOrganizationId] =
     useState<string>();
@@ -281,7 +331,8 @@ function WorkspaceHome() {
           {!isLoading && !error && (
             <div className="workspace-home-actions">
               <span className="workspace-board-total">
-                {boardCount} {boardCount === 1 ? "board" : "boards"}
+                {visibleBoardCount}{" "}
+                {visibleBoardCount === 1 ? "board" : "boards"}
               </span>
             </div>
           )}
@@ -308,7 +359,7 @@ function WorkspaceHome() {
           </section>
         ) : (
           <div className="workspace-board-groups">
-            {workspaces.map(({ organization, boards }) => {
+            {visibleWorkspaces.map(({ organization, boards }) => {
               const canManageWorkspace =
                 organization.membershipRole === "superadmin" ||
                 organization.membershipRole === "admin";
@@ -390,14 +441,14 @@ function WorkspaceHome() {
       </main>
       {showCreateBoard && (
         <CreateBoardDialog
-          organizations={workspaces
+          organizations={visibleWorkspaces
             .map(({ organization }) => organization)
             .filter(
               (organization) =>
                 organization.membershipRole === "superadmin" ||
                 organization.membershipRole === "admin",
             )}
-          initialOrganizationId={createBoardOrganizationId}
+          initialOrganizationId={createBoardOrganizationId ?? selectedOrgId}
           onClose={() => setShowCreateBoard(false)}
           onCreated={() => {
             setShowCreateBoard(false);
@@ -773,7 +824,9 @@ function Board() {
           onClick={() => !isSubmittingDialog && setDialog(null)}
         >
           <section
-            className="centered-dialog"
+            className={`centered-dialog ${
+              dialog.type === "delete-card" ? "" : "card-edit-dialog"
+            }`}
             role="dialog"
             aria-modal="true"
             aria-labelledby="board-dialog-title"

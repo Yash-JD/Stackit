@@ -23,6 +23,7 @@ apps/frontend/src/
     BoardTopbar.tsx         Board header, top bar, and presence controls
     BoardToolbar.tsx
     OrganizationMembersDialog.tsx
+    ProfilePage.tsx         Editable account profile and sign-out action
     StackitLogo.tsx
   index.css                Application styles
   index.html               Browser document entry
@@ -78,6 +79,11 @@ bun run start
   list, and board rename/delete events. REST remains the source of truth when
   the socket is offline.
 - Sidebar/workspace changes use local browser events to refresh affected views.
+  The selected workspace is shared between the sidebar and boards home, which
+  displays boards only for that workspace.
+- `/profile` lets a signed-in user update their display name, profile photo URL,
+  and short description. Email is read-only; sign-out is a separate action on
+  that page.
 - The People dialog uses the authenticated WebSocket service for live failed
   invitation delivery notices; it also reads persisted invitation status from
   the API.
@@ -87,11 +93,17 @@ bun run start
 - Members see only assigned boards and can manage cards there. Board and list
   management controls are hidden for members. The superadmin is displayed as
   protected with no removal or demotion action.
+- Members see a saved display name, falling back to their email local-part
+  until they set one. The acting user cannot change or remove their own
+  workspace membership.
 - Card details support editable `Design`/`Build`/`Research` labels, optional
   due dates, comment CRUD for the comment author, and a persisted activity
   timeline. Board search matches titles and descriptions; the existing label
   filter works on persisted card labels. No new notification delivery is
   included in this phase.
+- The board toolbar label filter and card move-to-list selector use the shared
+  dark UI styling. Sort, advanced filters, and grid-view controls remain
+  planned rather than implemented.
 - WebSocket configuration and behavior are described in the
   [WebSocket guide](../websocket/README.md).
 

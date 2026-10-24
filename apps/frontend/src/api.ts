@@ -81,6 +81,14 @@ export type Organization = {
   membershipRole?: "superadmin" | "admin" | "member";
 };
 
+export type UserProfile = {
+  id: string;
+  email: string;
+  name: string;
+  profilePhoto: string | null;
+  description: string;
+};
+
 export type BoardSummary = {
   id: string;
   title: string;
@@ -134,10 +142,12 @@ export type IssueActivity = {
 export type OrganizationMember = {
   userId: string;
   orgId: string;
+  isCurrentUser: boolean;
   role: "superadmin" | "admin" | "member";
   user: {
     id: string;
     email: string;
+    name: string | null;
     profilePhoto: string | null;
   };
   boardMemberships: Array<{
@@ -236,6 +246,7 @@ export async function apiRequest<T = unknown>(
 export function signup(data: {
   email: string;
   password: string;
+  name: string;
   profile: string;
   description: string;
 }) {
@@ -250,6 +261,32 @@ export function signin(data: { email: string; password: string }) {
     method: "POST",
     body: JSON.stringify(data),
   });
+}
+
+export async function getProfile() {
+  const response = await apiRequest<UserProfile>("/api/v1/profile", {
+    authenticated: true,
+  });
+  if (!response.data) {
+    throw new Error("The server did not return your profile");
+  }
+  return response.data;
+}
+
+export async function updateProfile(data: {
+  name: string;
+  profilePhoto: string;
+  description: string;
+}) {
+  const response = await apiRequest<UserProfile>("/api/v1/profile", {
+    method: "PUT",
+    authenticated: true,
+    body: JSON.stringify(data),
+  });
+  if (!response.data) {
+    throw new Error("The server did not return your updated profile");
+  }
+  return response.data;
 }
 
 export async function getOrganizations() {

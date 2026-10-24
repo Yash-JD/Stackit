@@ -6,6 +6,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import type { CardLabel } from "../types";
+import { MenuSelect } from "./MenuSelect";
 
 type BoardToolbarProps = {
   query: string;
@@ -32,21 +33,19 @@ export function BoardToolbar({
             aria-label="Search cards"
           />
         </div>
-        <div className="filter-wrap">
-          <Filter size={15} />
-          <select
-            value={activeFilter}
-            onChange={(event) =>
-              onFilterChange(event.target.value as "all" | CardLabel)
-            }
-            aria-label="Filter cards"
-          >
-            <option value="all">All cards</option>
-            <option value="Design">Design</option>
-            <option value="Build">Build</option>
-            <option value="Research">Research</option>
-          </select>
-        </div>
+        <MenuSelect
+          className="toolbar-filter-select"
+          ariaLabel="Filter cards"
+          prefix={<Filter size={15} aria-hidden="true" />}
+          value={activeFilter}
+          options={[
+            { value: "all", label: "All cards" },
+            { value: "Design", label: "Design" },
+            { value: "Build", label: "Build" },
+            { value: "Research", label: "Research" },
+          ]}
+          onChange={(filter) => onFilterChange(filter as "all" | CardLabel)}
+        />
       </div>
       <div className="toolbar-right">
         <button className="toolbar-button">

@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import type { BoardColumn, Card } from "../types";
+import { MenuSelect } from "./MenuSelect";
 import {
   createIssueComment,
   deleteIssueComment,
@@ -330,27 +331,26 @@ function BoardColumnView({
                 </>
               )}
               {columns.length > 1 && (
-                <select
+                <MenuSelect
                   className="task-card-move-select"
-                  aria-label={`Move ${card.title} to another list`}
+                  ariaLabel={`Move ${card.title} to another list`}
                   value=""
+                  options={[
+                    { value: "", label: "Move to" },
+                    ...columns
+                      .filter((targetColumn) => targetColumn.id !== column.id)
+                      .map((targetColumn) => ({
+                        value: targetColumn.id,
+                        label: targetColumn.title,
+                      })),
+                  ]}
                   disabled={pendingMoveIds.includes(card.id)}
-                  onChange={(event) => {
-                    const targetColumnId = event.target.value;
+                  onChange={(targetColumnId) => {
                     if (targetColumnId) {
                       onMoveCard(card.id, column.id, targetColumnId, null);
                     }
                   }}
-                >
-                  <option value="">Move to…</option>
-                  {columns
-                    .filter((targetColumn) => targetColumn.id !== column.id)
-                    .map((targetColumn) => (
-                      <option key={targetColumn.id} value={targetColumn.id}>
-                        {targetColumn.title}
-                      </option>
-                    ))}
-                </select>
+                />
               )}
               <button
                 type="button"
