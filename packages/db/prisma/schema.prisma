@@ -38,6 +38,7 @@ model User {
   invitations      Invitation[]
   comments         Comments[]
   boardMemberships BoardMembership[]
+  activities       IssueActivity[]
 }
 
 model Organization {
@@ -129,17 +130,20 @@ model Section {
 }
 
 model Issue {
-  id          String     @id @default(uuid())
+  id          String          @id @default(uuid())
   title       String
   description String
+  label       String          @default("Build")
+  dueDate     DateTime?       @db.Date
   boardId     String
-  board       Boards     @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  board       Boards          @relation(fields: [boardId], references: [id], onDelete: Cascade)
   sectionId   String
-  section     Section    @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-  isDeleted   Boolean    @default(false)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @default(now()) @updatedAt
+  section     Section         @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  isDeleted   Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @default(now()) @updatedAt
   comments    Comments[]
+  activities  IssueActivity[]
 }
 
 model Comments {
@@ -152,4 +156,17 @@ model Comments {
   isDeleted Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
+}
+
+model IssueActivity {
+  id        String   @id @default(uuid())
+  issueId   String
+  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action    String
+  details   String?
+  createdAt DateTime @default(now())
+
+  @@index([issueId, createdAt])
 }
