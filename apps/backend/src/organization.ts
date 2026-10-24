@@ -72,10 +72,10 @@ router.put(
 
     const userId = req.id;
 
-    if (!(await hasRole(userId, orgId, Role.admin))) {
-      return res.status(400).json({
+    if (!(await hasRole(userId, orgId, "superadmin"))) {
+      return res.status(403).json({
         success: false,
-        error: "NOT_AUTHENTICATED_TO_CREATE_ORG",
+        error: "UNAUTHORIZED_ONLY_SUPERADMIN_CAN_EDIT_WORKSPACE",
       });
     }
     const org = await prisma.organization.update({
@@ -172,10 +172,10 @@ router.delete(
     }
     const userId = req.id;
 
-    if (!(await hasRole(userId, orgId, "admin"))) {
-      return res.status(400).json({
+    if (!(await hasRole(userId, orgId, "superadmin"))) {
+      return res.status(403).json({
         success: false,
-        error: "NOT_AUTHENTICATED_TO_CREATE_ORG",
+        error: "UNAUTHORIZED_ONLY_SUPERADMIN_CAN_DELETE_WORKSPACE",
       });
     }
 

@@ -4,7 +4,7 @@ import { canMembershipAccessBoard } from "./boardAccessPolicy";
 export const hasRole = async (
   userId: string,
   orgId: string,
-  role: "admin" | "member",
+  role: "superadmin" | "admin" | "member",
 ) => {
   const membership = await prisma.membership.findFirst({
     where: {
@@ -18,7 +18,9 @@ export const hasRole = async (
 
   if (!membership) return false;
   if (role === "member") return true;
-  return membership.role === "admin" || membership.role === "superadmin";
+  if (role === "admin") return membership.role === "admin" || membership.role === "superadmin";
+  if (role === "superadmin") return membership.role === "superadmin";
+  return false;
 };
 
 export async function hasBoardAccess(userId: string, boardId: string) {

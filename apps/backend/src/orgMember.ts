@@ -28,10 +28,10 @@ router.post(
 
     const adminId = req.id;
 
-    if (!(await hasRole(adminId, data.orgId, "admin"))) {
+    if (!(await hasRole(adminId, data.orgId, "superadmin"))) {
       return res.status(403).json({
         success: false,
-        error: "UNAUTHORIZED",
+        error: "UNAUTHORIZED_ONLY_SUPERADMIN_CAN_INVITE",
       });
     }
 
@@ -450,10 +450,10 @@ router.put(
       userId: string;
       orgId: string;
     };
-    if (!(await hasRole(req.id, orgId, "admin"))) {
+    if (!(await hasRole(req.id, orgId, "superadmin"))) {
       return res.status(403).json({
         success: false,
-        error: "UNAUTHORIZED",
+        error: "UNAUTHORIZED_ONLY_SUPERADMIN_CAN_CHANGE_ROLE",
       });
     }
 
@@ -542,6 +542,13 @@ router.put(
         error: "MEMBERSHIP_NOT_FOUND",
       });
     }
+    if (req.id === userId) {
+      return res.status(400).json({
+        success: false,
+        error: "CANNOT_CHANGE_OWN_BOARD_ACCESS",
+      });
+    }
+
     if (targetMembership.role !== "member") {
       return res.status(400).json({
         success: false,
@@ -608,10 +615,10 @@ router.delete(
     const userId = req.params.userId as string;
     const orgId = req.params.orgId as string;
 
-    if (!(await hasRole(adminId, orgId, "admin"))) {
+    if (!(await hasRole(adminId, orgId, "superadmin"))) {
       return res.status(403).json({
         success: false,
-        error: "UNAUTHORIZED",
+        error: "UNAUTHORIZED_ONLY_SUPERADMIN_CAN_REMOVE_MEMBERS",
       });
     }
 

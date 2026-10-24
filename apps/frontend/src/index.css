@@ -3370,6 +3370,32 @@ button {
   font-style: italic;
 }
 
+.board-access-fixed {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.all-boards-pill {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(131, 203, 187, 0.12);
+  border: 1px solid rgba(131, 203, 187, 0.25);
+  color: #83cbbb;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.board-access-note {
+  color: #728486;
+  font-size: 11px;
+  font-style: italic;
+  line-height: 1.3;
+}
+
 .edit-boards-btn {
   padding: 3px 8px;
   border: 1px solid rgba(255, 255, 255, 0.1);

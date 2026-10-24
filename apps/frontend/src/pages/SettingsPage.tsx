@@ -67,7 +67,7 @@ export function SettingsPage() {
 
   const handleSaveSettings = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!organization || !canManage) return;
+    if (!organization || !isSuperadmin) return;
 
     const trimmedName = name.trim();
     if (!trimmedName) {
@@ -94,7 +94,7 @@ export function SettingsPage() {
   };
 
   const handleDeleteWorkspace = async () => {
-    if (!organization || !canManage) return;
+    if (!organization || !isSuperadmin) return;
     if (confirmNameInput.trim() !== organization.name.trim()) {
       setDeleteError("Workspace name confirmation does not match.");
       return;
@@ -230,7 +230,7 @@ export function SettingsPage() {
             <div>
               <h3>General Information</h3>
               <p>
-                {canManage
+                {isSuperadmin
                   ? "Update your workspace name and team description."
                   : "View current workspace name and team description."}
               </p>
@@ -247,13 +247,13 @@ export function SettingsPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Engineering Team"
-                  disabled={!canManage || isSaving}
+                  disabled={!isSuperadmin || isSaving}
                   required
                 />
               </label>
-              {!canManage && (
+              {!isSuperadmin && (
                 <span className="field-note">
-                  Only workspace admins and owners can modify workspace details.
+                  Only the workspace superadmin (owner) can edit workspace details.
                 </span>
               )}
             </div>
@@ -266,7 +266,7 @@ export function SettingsPage() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Brief description of what your team does..."
-                  disabled={!canManage || isSaving}
+                  disabled={!isSuperadmin || isSaving}
                   rows={4}
                 />
               </label>
@@ -286,7 +286,7 @@ export function SettingsPage() {
               </div>
             )}
 
-            {canManage && (
+            {isSuperadmin && (
               <div className="settings-form-actions">
                 <button
                   type="submit"
@@ -301,8 +301,8 @@ export function SettingsPage() {
           </form>
         </section>
 
-        {/* Card 3: Danger Zone */}
-        {canManage && (
+        {/* Card 3: Danger Zone (Superadmin only) */}
+        {isSuperadmin && (
           <section className="settings-card danger-card" aria-label="Danger Zone">
             <div className="settings-card-header">
               <div>

@@ -60,9 +60,10 @@ export function MembersPage() {
   const organizationId = selectedWorkspace?.organization.id ?? "";
   const organizationName = selectedWorkspace?.organization.name ?? "Workspace";
   const boards = selectedWorkspace?.boards ?? [];
-  const canManage =
-    selectedWorkspace?.organization.membershipRole === "superadmin" ||
-    selectedWorkspace?.organization.membershipRole === "admin";
+  const membershipRole = selectedWorkspace?.organization.membershipRole;
+  const isSuperadmin = membershipRole === "superadmin";
+  const isAdmin = membershipRole === "admin";
+  const canManageBoardGrants = isSuperadmin || isAdmin;
 
   const [activeTab, setActiveTab] = useState<"members" | "invites" | "incoming">("members");
   const [members, setMembers] = useState<OrganizationMember[]>([]);
@@ -106,10 +107,10 @@ export function MembersPage() {
 
     const [membersResult, orgInvitesResult, pendingResult] =
       await Promise.allSettled([
-        canManage
+        canManageBoardGrants
           ? getOrganizationMembers(organizationId)
           : Promise.resolve([]),
-        canManage
+        isSuperadmin
           ? getOrganizationInvitations(organizationId)
           : Promise.resolve([]),
         getPendingInvitations(),
@@ -139,7 +140,7 @@ export function MembersPage() {
 
     setLoadErrors(errors);
     setIsLoading(false);
-  }, [canManage, organizationId]);
+  }, [canManageBoardGrants, isSuperadmin, organizationId]);
 
   useEffect(() => {
     void refresh();
@@ -158,7 +159,7 @@ export function MembersPage() {
 
   // WebSocket subscription for live invite notifications
   useEffect(() => {
-    if (!canManage || !organizationId) return;
+    if (!isSuperadmin || !organizationId) return;
     const token = localStorage.getItem(AUTH_TOKEN_KEY);
     if (!token) return;
 
@@ -234,7 +235,7 @@ export function MembersPage() {
       if (socketRef.current === socket) socketRef.current = null;
       socket.close();
     };
-  }, [canManage, organizationId, refresh]);
+  }, [isSuperadmin, organizationId, refresh]);
 
   const handleInvite = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -425,7 +426,7 @@ export function MembersPage() {
           <span className="tab-count">{members.length}</span>
         </button>
 
-        {canManage && (
+        {isSuperadmin && (
           <button
             type="button"
             className={`members-tab ${activeTab === "invites" ? "active" : ""}`}
@@ -453,8 +454,8 @@ export function MembersPage() {
       {/* Tab Content: Team Members */}
       {activeTab === "members" && (
         <div className="members-tab-content">
-          {/* Invite Section (Admins/Superadmins only) */}
-          {canManage && (
+          {/* Invite Section (Superadmin only) */}
+          {isSuperadmin && (
             <section className="members-card invite-card" aria-label="Invite member">
               <div className="members-card-header">
                 <div>
@@ -576,12 +577,13 @@ export function MembersPage() {
                       <th>User</th>
                       <th>Role</th>
                       <th>Board Access</th>
-                      {canManage && <th>Actions</th>}
+                      {isSuperadmin && <th>Actions</th>}
                     </tr>
                   </thead>
                   <tbody>
                     {filteredMembers.map((member) => {
-                      const isSuperadmin = member.role === "superadmin";
+                      const isSuperadminMember = member.role === "superadmin";
+                      const isAdminMember = member.role === "admin";
                       const isCurrentUser = member.isCurrentUser;
                       const displayName =
                         member.user.name ||
@@ -619,16 +621,7 @@ export function MembersPage() {
                           </td>
 
                           <td className="member-role-cell">
-                            {isSuperadmin || isCurrentUser || !canManage ? (
-                              <span
-                                className={`role-badge ${
-                                  isSuperadmin ? "role-superadmin" : `role-${member.role}`
-                                }`}
-                              >
-                                <Shield size={12} />
-                                {isSuperadmin ? "Superadmin" : member.role}
-                              </span>
-                            ) : (
+                            {isSuperadmin && !isCurrentUser && !isSuperadminMember ? (
                               <select
                                 className="member-role-select"
                                 value={member.role}
@@ -643,11 +636,55 @@ export function MembersPage() {
                                 <option value="member">Member</option>
                                 <option value="admin">Admin</option>
                               </select>
+                            ) : (
+                              <span
+                                className={`role-badge ${
+                                  isSuperadminMember
+                                    ? "role-superadmin"
+                                    : `role-${member.role}`
+                                }`}
+                              >
+                                <Shield size={12} />
+                                {isSuperadminMember ? "Superadmin" : member.role}
+                              </span>
                             )}
                           </td>
 
                           <td className="member-boards-cell">
-                            {isEditingBoards && canManage ? (
+                            {/* Superadmin & Admin automatically have access to all boards */}
+                            {isSuperadminMember ? (
+                              <div className="board-access-fixed">
+                                <span className="all-boards-pill">All Boards Access</span>
+                                <span className="board-access-note">
+                                  Superadmins automatically have access to all boards.
+                                </span>
+                              </div>
+                            ) : isAdminMember ? (
+                              <div className="board-access-fixed">
+                                <span className="all-boards-pill">All Boards Access</span>
+                                <span className="board-access-note">
+                                  Admins automatically have access to all boards.
+                                </span>
+                              </div>
+                            ) : isCurrentUser ? (
+                              /* Current user cannot modify their own board access */
+                              <div className="board-access-fixed">
+                                <div className="board-tags">
+                                  {member.boardMemberships.map((grant) => (
+                                    <span key={grant.board.id} className="board-tag">
+                                      {grant.board.title}
+                                    </span>
+                                  ))}
+                                  {member.boardMemberships.length === 0 && (
+                                    <span className="no-access-text">No board grants</span>
+                                  )}
+                                </div>
+                                <span className="board-access-note">
+                                  You cannot modify your own board access.
+                                </span>
+                              </div>
+                            ) : isEditingBoards && canManageBoardGrants ? (
+                              /* Admin / Superadmin editing regular member boards */
                               <div className="member-board-editor">
                                 <div className="board-check-grid">
                                   {boards.map((b) => (
@@ -695,6 +732,7 @@ export function MembersPage() {
                                 </div>
                               </div>
                             ) : (
+                              /* Regular view for member board grants */
                               <div className="member-boards-preview">
                                 {member.boardMemberships.length === 0 ? (
                                   <span className="no-access-text">No board grants</span>
@@ -707,7 +745,7 @@ export function MembersPage() {
                                     ))}
                                   </div>
                                 )}
-                                {canManage && boards.length > 0 && (
+                                {canManageBoardGrants && boards.length > 0 && (
                                   <button
                                     type="button"
                                     className="edit-boards-btn"
@@ -720,9 +758,9 @@ export function MembersPage() {
                             )}
                           </td>
 
-                          {canManage && (
+                          {isSuperadmin && (
                             <td className="member-actions-cell">
-                              {!isSuperadmin && !isCurrentUser && (
+                              {!isSuperadminMember && !isCurrentUser && (
                                 <button
                                   type="button"
                                   className="icon-danger-btn"
@@ -745,8 +783,8 @@ export function MembersPage() {
         </div>
       )}
 
-      {/* Tab Content: Outgoing Workspace Invitations */}
-      {activeTab === "invites" && canManage && (
+      {/* Tab Content: Outgoing Workspace Invitations (Superadmin only) */}
+      {activeTab === "invites" && isSuperadmin && (
         <section className="members-card" aria-label="Workspace Invitations">
           <div className="members-card-header">
             <div>

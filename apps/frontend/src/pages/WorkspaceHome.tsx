@@ -74,6 +74,8 @@ export function WorkspaceHome() {
   const canManageWorkspace =
     selectedWorkspace?.organization.membershipRole === "superadmin" ||
     selectedWorkspace?.organization.membershipRole === "admin";
+  const isSuperadminWorkspace =
+    selectedWorkspace?.organization.membershipRole === "superadmin";
 
   const [showCreateBoard, setShowCreateBoard] = useState(false);
   const [createBoardOrganizationId, setCreateBoardOrganizationId] = useState<string>();
@@ -289,10 +291,14 @@ export function WorkspaceHome() {
                   <div className="quick-link-info">
                     <span className="quick-link-name">Workspace Settings</span>
                     <span className="quick-link-desc">
-                      {canManageWorkspace ? "Edit workspace details & preferences" : "View workspace details"}
+                      {isSuperadminWorkspace
+                        ? "Edit workspace details & preferences"
+                        : "View workspace details"}
                     </span>
                   </div>
-                  <span className="quick-link-badge">{canManageWorkspace ? "Admin" : "Info"}</span>
+                  <span className="quick-link-badge">
+                    {isSuperadminWorkspace ? "Owner" : "Info"}
+                  </span>
                   <ChevronRight size={16} className="quick-link-arrow" />
                 </Link>
 
