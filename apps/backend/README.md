@@ -21,6 +21,7 @@ apps/backend/
   helper/
     authMiddleware.ts      JWT verification and request user identity
     hasRole.ts             Workspace role and board-grant checks
+    boardAccessPolicy.ts   Shared pure role/grant decision for board access
     email.ts               Invitation and password-reset email delivery
     errorHandler.ts        Shared Express error response handling
   shared/
@@ -77,6 +78,11 @@ API health checks:
 - `http://localhost:3000/health`
 - `http://localhost:3000/health/db`
 - `http://localhost:3000/api-docs`
+
+Run focused backend unit tests from the repository root with `bun test`, or
+from this package with `bun run test`. Current tests cover card ordering and
+the shared workspace-role/board-grant policy, use Bun's built-in test runner,
+and do not require a database.
 
 For a direct non-watch run from this package, use `bun run index.ts` after
 configuring the required environment variables.

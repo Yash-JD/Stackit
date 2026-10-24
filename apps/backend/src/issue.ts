@@ -4,6 +4,7 @@ import { prisma } from "db/client";
 
 import { authMiddleware } from "../helper/authMiddleware";
 import { hasBoardAccess } from "../helper/hasRole";
+import { orderIssueMove } from "./issueOrdering";
 
 const router = express.Router();
 
@@ -391,24 +392,14 @@ router.put(
               ],
               select: { id: true },
             });
-        const sourceIds = sourceIssues
-          .map(({ id }) => id)
-          .filter((id) => id !== issueId);
-        const destinationIds = sameSection
-          ? sourceIds
-          : destinationIssues.map(({ id }) => id);
-        const position = Math.min(
-          data.position ?? destinationIds.length,
-          destinationIds.length,
+        const { position, sections: orderedSections } = orderIssueMove(
+          issueId,
+          issue.sectionId,
+          newSectionId,
+          sourceIssues.map(({ id }) => id),
+          destinationIssues.map(({ id }) => id),
+          data.position,
         );
-        destinationIds.splice(position, 0, issueId);
-
-        const orderedSections = sameSection
-          ? [{ sectionId: issue.sectionId, issueIds: destinationIds }]
-          : [
-              { sectionId: issue.sectionId, issueIds: sourceIds },
-              { sectionId: newSectionId, issueIds: destinationIds },
-            ];
         for (const orderedSection of orderedSections) {
           for (const [
             nextPosition,

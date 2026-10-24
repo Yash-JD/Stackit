@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "prisma-all": "cd ../../packages/db && bun run prisma-all",
-    "start:dev": "cd ../.. && bun --watch --env-file apps/backend/.env apps/backend/index.ts"
+    "start:dev": "cd ../.. && bun --watch --env-file apps/backend/.env apps/backend/index.ts",
+    "test": "bun test"
   },
   "devDependencies": {
     "@types/bun": "latest",

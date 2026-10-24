@@ -1,4 +1,5 @@
 import { prisma } from "db/client";
+import { canMembershipAccessBoard } from "./boardAccessPolicy";
 
 export const hasRole = async (
   userId: string,
@@ -41,7 +42,7 @@ export async function hasBoardAccess(userId: string, boardId: string) {
     select: { role: true },
   });
   if (!membership) return false;
-  if (membership.role !== "member") return true;
+  if (canMembershipAccessBoard(membership.role, false)) return true;
 
   const boardMembership = await prisma.boardMembership.findFirst({
     where: {
@@ -52,5 +53,5 @@ export async function hasBoardAccess(userId: string, boardId: string) {
     select: { id: true },
   });
 
-  return Boolean(boardMembership);
+  return canMembershipAccessBoard(membership.role, Boolean(boardMembership));
 }
