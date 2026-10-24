@@ -9,6 +9,7 @@ import { prisma } from "db/client";
 import { authMiddleware } from "../helper/authMiddleware";
 import { hasRole } from "../helper/hasRole";
 import { sendInviteEmail } from "../helper/email";
+import { deliverInvitationEmail } from "../helper/invitationDelivery";
 
 const router = express.Router();
 
@@ -106,19 +107,22 @@ router.post(
         isDeleted: false,
       },
     });
-    try {
-      await sendInviteEmail(
-        `${org?.name || "Stackit"} <onboarding@resend.dev>`,
-        normalizedEmail,
-        org?.name ?? "an organization",
-        invitation.id,
-      );
-    } catch {
-      await prisma.invitation.update({
-        where: { id: invitation.id },
-        data: { status: "FAILED" },
-      });
-
+    const emailSent = await deliverInvitationEmail(
+      () =>
+        sendInviteEmail(
+          `${org?.name || "Stackit"} <onboarding@resend.dev>`,
+          normalizedEmail,
+          org?.name ?? "an organization",
+          invitation.id,
+        ),
+      async () => {
+        await prisma.invitation.update({
+          where: { id: invitation.id },
+          data: { status: "FAILED" },
+        });
+      },
+    );
+    if (!emailSent) {
       return res.status(200).json({
         success: true,
         msg: "INVITATION_EMAIL_FAILED",
