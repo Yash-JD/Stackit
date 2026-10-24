@@ -1,5 +1,5 @@
 import express, { type Response, type Request } from "express";
-import { IssueSchema, UpdateIssueSchema } from "../zod";
+import { IssueSchema, MoveIssueSchema, UpdateIssueSchema } from "../zod";
 import { prisma } from "db/client";
 
 import { authMiddleware } from "../helper/authMiddleware";
@@ -47,28 +47,41 @@ router.post(
       });
     }
 
-    const issue = await prisma.$transaction(async (transaction) => {
-      const createdIssue = await transaction.issue.create({
-        data: {
-          title: data.title,
-          description: data.description,
-          label: data.label,
-          dueDate: data.dueDate
-            ? new Date(`${data.dueDate}T00:00:00.000Z`)
-            : null,
-          sectionId: section.id,
-          boardId: section.boardId,
-        },
-      });
-      await transaction.issueActivity.create({
-        data: {
-          issueId: createdIssue.id,
-          actorId: userId,
-          action: "created",
-        },
-      });
-      return createdIssue;
-    });
+    const issue = await prisma.$transaction(
+      async (transaction) => {
+        const lastIssue = await transaction.issue.findFirst({
+          where: { sectionId: section.id, isDeleted: false },
+          orderBy: [
+            { position: "desc" },
+            { createdAt: "desc" },
+            { id: "desc" },
+          ],
+          select: { position: true },
+        });
+        const createdIssue = await transaction.issue.create({
+          data: {
+            title: data.title,
+            description: data.description,
+            label: data.label,
+            dueDate: data.dueDate
+              ? new Date(`${data.dueDate}T00:00:00.000Z`)
+              : null,
+            sectionId: section.id,
+            boardId: section.boardId,
+            position: (lastIssue?.position ?? -1) + 1,
+          },
+        });
+        await transaction.issueActivity.create({
+          data: {
+            issueId: createdIssue.id,
+            actorId: userId,
+            action: "created",
+          },
+        });
+        return createdIssue;
+      },
+      { isolationLevel: "Serializable" },
+    );
 
     return res.status(200).json({
       success: true,
@@ -111,6 +124,7 @@ router.get(
 
     const issues = await prisma.issue.findMany({
       where: { sectionId, isDeleted: false },
+      orderBy: [{ position: "asc" }, { createdAt: "asc" }, { id: "asc" }],
     });
 
     return res.status(200).json({
@@ -307,6 +321,14 @@ router.put(
     const issueId = req.params.issueId as string;
     const newSectionId = req.params.sectionId as string;
 
+    const { success, data } = MoveIssueSchema.safeParse(req.body ?? {});
+    if (!success) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_REQUEST",
+      });
+    }
+
     const issue = await prisma.issue.findFirst({
       where: {
         id: issueId,
@@ -317,6 +339,7 @@ router.put(
       select: {
         id: true,
         boardId: true,
+        sectionId: true,
         section: { select: { title: true } },
       },
     });
@@ -349,21 +372,77 @@ router.put(
       });
     }
 
-    const updatedIssue = await prisma.$transaction(async (transaction) => {
-      const movedIssue = await transaction.issue.update({
-        where: { id: issueId },
-        data: { sectionId: newSectionId },
-      });
-      await transaction.issueActivity.create({
-        data: {
-          issueId,
-          actorId: userId,
-          action: "moved",
-          details: `${issue.section.title} to ${section.title}`,
-        },
-      });
-      return movedIssue;
-    });
+    const updatedIssue = await prisma.$transaction(
+      async (transaction) => {
+        const sourceIssues = await transaction.issue.findMany({
+          where: { sectionId: issue.sectionId, isDeleted: false },
+          orderBy: [{ position: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+          select: { id: true },
+        });
+        const sameSection = issue.sectionId === newSectionId;
+        const destinationIssues = sameSection
+          ? sourceIssues
+          : await transaction.issue.findMany({
+              where: { sectionId: newSectionId, isDeleted: false },
+              orderBy: [
+                { position: "asc" },
+                { createdAt: "asc" },
+                { id: "asc" },
+              ],
+              select: { id: true },
+            });
+        const sourceIds = sourceIssues
+          .map(({ id }) => id)
+          .filter((id) => id !== issueId);
+        const destinationIds = sameSection
+          ? sourceIds
+          : destinationIssues.map(({ id }) => id);
+        const position = Math.min(
+          data.position ?? destinationIds.length,
+          destinationIds.length,
+        );
+        destinationIds.splice(position, 0, issueId);
+
+        const orderedSections = sameSection
+          ? [{ sectionId: issue.sectionId, issueIds: destinationIds }]
+          : [
+              { sectionId: issue.sectionId, issueIds: sourceIds },
+              { sectionId: newSectionId, issueIds: destinationIds },
+            ];
+        for (const orderedSection of orderedSections) {
+          for (const [
+            nextPosition,
+            orderedIssueId,
+          ] of orderedSection.issueIds.entries()) {
+            await transaction.issue.update({
+              where: { id: orderedIssueId },
+              data: {
+                position: nextPosition,
+                ...(orderedIssueId === issueId && {
+                  sectionId: orderedSection.sectionId,
+                }),
+              },
+            });
+          }
+        }
+
+        const movedIssue = await transaction.issue.findUniqueOrThrow({
+          where: { id: issueId },
+        });
+        await transaction.issueActivity.create({
+          data: {
+            issueId,
+            actorId: userId,
+            action: "moved",
+            details: sameSection
+              ? `within ${section.title}`
+              : `${issue.section.title} to ${section.title}`,
+          },
+        });
+        return movedIssue;
+      },
+      { isolationLevel: "Serializable" },
+    );
 
     return res.status(200).json({
       success: true,

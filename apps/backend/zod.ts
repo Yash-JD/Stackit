@@ -68,6 +68,10 @@ export const UpdateIssueSchema = z.object({
   dueDate: z.iso.date().nullable().optional(),
 });
 
+export const MoveIssueSchema = z.object({
+  position: z.number().int().min(0).optional(),
+});
+
 export const CommentsSchema = z.object({
   comment: z.string().trim().min(1).max(4000),
 });

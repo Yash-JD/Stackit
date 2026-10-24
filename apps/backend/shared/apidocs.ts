@@ -503,9 +503,18 @@ const apiDocument = {
       put: {
         tags: ["Issues"],
         security: [{ bearerAuth: [] }],
-        summary: "Move an issue to another section",
+        summary: "Move or reorder an issue",
+        requestBody: {
+          required: false,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/IssueMoveRequest" },
+            },
+          },
+        },
         responses: {
           "200": { description: "Issue moved" },
+          "400": { $ref: "#/components/responses/BadRequest" },
           "401": { $ref: "#/components/responses/Unauthorized" },
           "403": { $ref: "#/components/responses/Forbidden" },
           "404": { $ref: "#/components/responses/NotFound" },
@@ -802,6 +811,12 @@ const apiDocument = {
           description: { type: "string" },
           label: { type: "string", enum: ["Design", "Build", "Research"] },
           dueDate: { type: "string", format: "date", nullable: true },
+        },
+      },
+      IssueMoveRequest: {
+        type: "object",
+        properties: {
+          position: { type: "integer", minimum: 0 },
         },
       },
       CommentRequest: {
