@@ -2,13 +2,14 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   CircleHelp,
   ChevronDown,
+  Home,
   LayoutGrid,
   Plus,
   Settings,
   UserRound,
   Users,
 } from "lucide-react";
-import { Link, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import {
   createBoard,
   createOrganization,
@@ -40,6 +41,7 @@ export function Sidebar({
   onToggleCollapse,
 }: SidebarProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const workspacePickerRef = useRef<HTMLDivElement>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [profileError, setProfileError] = useState(false);
@@ -371,10 +373,10 @@ export function Sidebar({
   return (
     <aside className={`sidebar ${isOpen ? "sidebar-open" : ""}`}>
       <div className="brand-row">
-        <div className="brand-mark">
+        <Link to="/" className="brand-mark" aria-label="Stackit Home">
           <StackitLogo className="stackit-logo" />
           <span>Stackit</span>
-        </div>
+        </Link>
         <button
           type="button"
           className="sidebar-collapse-button"
@@ -446,9 +448,18 @@ export function Sidebar({
       <nav className="sidebar-nav">
         <p className="nav-label">Workspace</p>
         <button
-          className="nav-item active"
+          className={`nav-item ${location.pathname === "/" ? "active" : ""}`}
           type="button"
           onClick={() => navigate("/")}
+          aria-label="Home"
+          title={isCollapsed ? "Home" : undefined}
+        >
+          <Home size={17} /> <span>Home</span>
+        </button>
+        <button
+          className={`nav-item ${location.pathname === "/boards" ? "active" : ""}`}
+          type="button"
+          onClick={() => navigate("/boards")}
           aria-label="Boards"
           title={isCollapsed ? "Boards" : undefined}
         >
