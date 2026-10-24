@@ -15,6 +15,7 @@ datasource db {
 enum Role {
   member
   admin
+  superadmin
 }
 
 enum InvitationStatus {
@@ -25,17 +26,18 @@ enum InvitationStatus {
 }
 
 model User {
-  id           String       @id @default(uuid())
-  email        String       @unique
-  password     String?
-  description  String?
-  profilePhoto String?
-  isDeleted    Boolean      @default(false)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @default(now()) @updatedAt
-  memberships  Membership[]
-  invitations  Invitation[]
-  comments     Comments[]
+  id               String            @id @default(uuid())
+  email            String            @unique
+  password         String?
+  description      String?
+  profilePhoto     String?
+  isDeleted        Boolean           @default(false)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @default(now()) @updatedAt
+  memberships      Membership[]
+  invitations      Invitation[]
+  comments         Comments[]
+  boardMemberships BoardMembership[]
 }
 
 model Organization {
@@ -65,28 +67,54 @@ model Membership {
 }
 
 model Invitation {
-  id        String           @id @default(uuid())
+  id        String            @id @default(uuid())
   email     String
   orgId     String
-  org       Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  role      Role             @default(member)
+  org       Organization      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  role      Role              @default(member)
   invitedBy String
-  inviter   User             @relation(fields: [invitedBy], references: [id])
-  status    InvitationStatus @default(PENDING)
-  isDeleted Boolean          @default(false)
-  createdAt DateTime         @default(now())
+  inviter   User              @relation(fields: [invitedBy], references: [id])
+  status    InvitationStatus  @default(PENDING)
+  isDeleted Boolean           @default(false)
+  createdAt DateTime          @default(now())
+  boards    InvitationBoard[]
+}
+
+model BoardMembership {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  boardId   String
+  board     Boards   @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, boardId])
+}
+
+model InvitationBoard {
+  id           String     @id @default(uuid())
+  invitationId String
+  invitation   Invitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  boardId      String
+  board        Boards     @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([invitationId, boardId])
 }
 
 model Boards {
-  id           String       @id @default(uuid())
+  id           String            @id @default(uuid())
   title        String
   orgId        String
-  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  isDeleted    Boolean      @default(false)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @default(now()) @updatedAt
+  organization Organization      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  isDeleted    Boolean           @default(false)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @default(now()) @updatedAt
   sections     Section[]
   issues       Issue[]
+  memberships  BoardMembership[]
+  invitations  InvitationBoard[]
 }
 
 model Section {

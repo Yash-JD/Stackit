@@ -16,9 +16,15 @@ packages/db/
 ```
 
 The current schema includes users, organizations, memberships, invitations,
-boards, sections, issues, and comments. Important relationships:
+board grants, boards, sections, issues, and comments. Important relationships:
 
 - A user can belong to multiple organizations through a membership.
+- Membership roles are `superadmin`, `admin`, and `member`. A workspace has at
+  most one active superadmin.
+- Superadmins and admins can access every board in their workspace. A member
+  needs an active `BoardMembership` grant for each board they can access.
+- Invitations associate a member with selected boards through
+  `InvitationBoard`; accepting activates those grants.
 - A workspace owns boards; boards contain sections and issues.
 - Issues can have comments authored by users.
 - Invitations move through `PENDING`, `ACCEPTED`, `REJECTED`, or `FAILED`
@@ -67,6 +73,13 @@ the schema and migration together, and regenerate the client. Do not edit old
 migrations to represent new schema changes; add a new migration instead.
 Production deployments should apply reviewed migrations with a deployment
 workflow rather than running `migrate dev`.
+
+The Phase 10 migrations add the superadmin role and board-grant tables. They
+have been generated and validated, but not applied by this implementation.
+The legacy migration promotes the oldest active admin in each existing
+workspace because workspace creator identity was not recorded in the old
+schema. Existing regular members are intentionally not granted boards; assign
+their board access after the migrations are applied.
 
 ## Change checklist
 
