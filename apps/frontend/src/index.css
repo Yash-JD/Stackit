@@ -43,6 +43,10 @@ button {
     #0d1117;
 }
 .sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  max-height: 100vh;
   width: 246px;
   flex: 0 0 246px;
   padding: 24px 16px 18px;
@@ -50,12 +54,15 @@ button {
   flex-direction: column;
   background: rgba(13, 17, 23, 0.95);
   border-right: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 10;
+  overflow: hidden;
   transition:
     width 0.2s ease,
     flex-basis 0.2s ease,
     padding 0.2s ease;
 }
 .brand-row {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -390,7 +397,68 @@ button {
 }
 .sidebar-nav {
   flex: 1;
-  margin-top: 28px;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin-top: 24px;
+  padding-right: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+}
+.sidebar-nav::-webkit-scrollbar {
+  width: 4px;
+}
+.sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+}
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+.sidebar-footer {
+  flex-shrink: 0;
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sidebar-profile-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+.sidebar-logout-button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: #94a0a3;
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.sidebar-logout-button:hover {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+.workspace-shell.sidebar-collapsed .sidebar-profile-group {
+  flex-direction: column;
+  gap: 8px;
+}
+.workspace-shell.sidebar-collapsed .sidebar-logout-button {
+  width: 32px;
+  height: 32px;
 }
 .nav-label {
   margin: 0 10px 9px;

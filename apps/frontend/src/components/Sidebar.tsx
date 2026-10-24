@@ -4,12 +4,14 @@ import {
   ChevronDown,
   Home,
   LayoutGrid,
+  LogOut,
   Plus,
   Settings,
   UserRound,
   Users,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router";
+import { useAuth } from "../auth";
 import {
   createBoard,
   createOrganization,
@@ -43,6 +45,7 @@ export function Sidebar({
 }: SidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { logout } = useAuth();
   const workspacePickerRef = useRef<HTMLDivElement>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [profileError, setProfileError] = useState(false);
@@ -817,29 +820,43 @@ export function Sidebar({
       )}
 
       <div className="sidebar-footer">
-        <button className="nav-item">
+        <button className="nav-item" type="button">
           <CircleHelp size={17} /> <span>Help center</span>
         </button>
-        <Link
-          className="profile-row"
-          to="/profile"
-          onClick={onClose}
-          aria-label="Open your profile"
-        >
-          <div className="profile-avatar">
-            <UserRound size={15} />
-          </div>
-          <div>
-            <strong>
-              {userProfile?.name ??
-                (profileError ? "Profile unavailable" : "Loading profile...")}
-            </strong>
-            <span>
-              {userProfile?.email ??
-                (profileError ? "Open account settings" : "Account settings")}
-            </span>
-          </div>
-        </Link>
+        <div className="sidebar-profile-group">
+          <Link
+            className="profile-row"
+            to="/profile"
+            onClick={onClose}
+            aria-label="Open your profile"
+          >
+            <div className="profile-avatar">
+              <UserRound size={15} />
+            </div>
+            <div>
+              <strong>
+                {userProfile?.name ??
+                  (profileError ? "Profile unavailable" : "Loading profile...")}
+              </strong>
+              <span>
+                {userProfile?.email ??
+                  (profileError ? "Open account settings" : "Account settings")}
+              </span>
+            </div>
+          </Link>
+          <button
+            type="button"
+            className="sidebar-logout-button"
+            onClick={() => {
+              onClose();
+              logout();
+            }}
+            title="Log out"
+            aria-label="Log out"
+          >
+            <LogOut size={15} />
+          </button>
+        </div>
       </div>
     </aside>
   );
