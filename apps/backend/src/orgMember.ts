@@ -10,6 +10,7 @@ import { authMiddleware } from "../helper/authMiddleware";
 import { hasRole } from "../helper/hasRole";
 import { sendInviteEmail } from "../helper/email";
 import { deliverInvitationEmail } from "../helper/invitationDelivery";
+import { getMembershipMutationBlockReason } from "../helper/membershipMutationPolicy";
 
 const router = express.Router();
 
@@ -401,6 +402,7 @@ router.get(
           select: {
             id: true,
             email: true,
+            name: true,
             profilePhoto: true,
             boardMemberships: {
               where: {
@@ -415,9 +417,11 @@ router.get(
     });
     const members = membership.map(({ user, ...member }) => ({
       ...member,
+      isCurrentUser: member.userId === adminId,
       user: {
         id: user.id,
         email: user.email,
+        name: user.name,
         profilePhoto: user.profilePhoto,
       },
       boardMemberships: user.boardMemberships,
@@ -462,10 +466,21 @@ router.put(
         error: "MEMBERSHIP_NOT_FOUND",
       });
     }
-    if (targetMembership.role === "superadmin") {
+    const mutationBlockReason = getMembershipMutationBlockReason(
+      req.id,
+      userId,
+      targetMembership.role,
+    );
+    if (mutationBlockReason === "SUPERADMIN") {
       return res.status(400).json({
         success: false,
         error: "SUPERADMIN_ROLE_CANNOT_BE_CHANGED",
+      });
+    }
+    if (mutationBlockReason === "SELF") {
+      return res.status(400).json({
+        success: false,
+        error: "CANNOT_CHANGE_OWN_ROLE",
       });
     }
 
@@ -616,10 +631,21 @@ router.delete(
       });
     }
 
-    if (targetMembership.role === "superadmin") {
+    const mutationBlockReason = getMembershipMutationBlockReason(
+      adminId,
+      userId,
+      targetMembership.role,
+    );
+    if (mutationBlockReason === "SUPERADMIN") {
       return res.status(400).json({
         success: false,
         error: "SUPERADMIN_CANNOT_BE_REMOVED",
+      });
+    }
+    if (mutationBlockReason === "SELF") {
+      return res.status(400).json({
+        success: false,
+        error: "CANNOT_REMOVE_SELF",
       });
     }
 

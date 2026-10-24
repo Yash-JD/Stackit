@@ -10,7 +10,7 @@ PostgreSQL through the shared `packages/db` workspace.
 apps/backend/
   index.ts                 Express app, middleware, health checks, router mounts
   src/
-    authentication.ts      Signup and signin
+    authentication.ts      Signup, signin, and current-user profile routes
     organization.ts        Workspace CRUD and membership lookups
     orgMember.ts           Invites, board access, roles, and membership changes
     board.ts               Board CRUD
@@ -83,7 +83,8 @@ API health checks:
 Run focused backend unit tests from the repository root with `bun test`, or
 from this package with `bun run test`. Current tests cover card ordering, the
 shared workspace-role/board-grant policy, and invitation email failure
-handling. They use Bun's built-in test runner and do not require a database.
+handling, membership mutation policy, and profile update validation. They use
+Bun's built-in test runner and do not require a database.
 
 For a direct non-watch run from this package, use `bun run index.ts` after
 configuring the required environment variables.
@@ -92,7 +93,7 @@ configuring the required environment variables.
 
 | Area           | Routes                                                                                                                                                 |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Authentication | `POST /api/v1/signup`, `POST /api/v1/signin`                                                                                                           |
+| Authentication | `POST /api/v1/signup`, `POST /api/v1/signin`, `GET`/`PUT /api/v1/profile` (self profile; email is read-only)                                           |
 | Organizations  | `GET /api/v1/organization`, `POST /api/v1/organization/create`, and `/:orgId` update, get, and delete routes                                           |
 | Membership     | Invite with board IDs; pending/list/accept/reject invitations; member list/removal; role and board-grant updates                                       |
 | Boards         | `GET`/`POST /api/v1/boards`, `PUT`/`DELETE /api/v1/boards/:boardId`                                                                                    |
@@ -104,11 +105,18 @@ See the live OpenAPI document at `/api-docs` for request and response shapes.
 Authorization is enforced server-side; hiding a frontend control is not an
 access-control check.
 
+The authenticated `/api/v1/profile` GET and PUT routes expose only the current
+user's profile. The update schema accepts a display name, photo URL, and short
+description; email and other account credentials cannot be changed through
+this route. Existing users' names are backfilled from their email local-part
+by the new display-name migration.
+
 The workspace creator is assigned the sole `superadmin` role. Superadmins and
 admins can manage workspace/board/list operations and access all workspace
 boards. Members must have an active workspace membership and explicit board
-grant; they can manage cards and comments on assigned boards. The API rejects
-attempts to demote or remove the superadmin, including self-removal. Board
+grant; they can manage cards and comments on assigned boards. The API rejects attempts to demote or remove the superadmin, including
+self-removal, and rejects role changes and removals targeting the acting
+administrator. Board
 grant changes are validated against the target workspace. The project owner
 reports that the Phase 10–12 migrations have been handled. Verify migration
 status against the intended database before any future migration operation;

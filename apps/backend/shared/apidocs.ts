@@ -98,6 +98,37 @@ const apiDocument = {
         },
       },
     },
+    "/api/v1/profile": {
+      get: {
+        tags: ["Authentication"],
+        security: [{ bearerAuth: [] }],
+        summary: "Get the current user's profile",
+        responses: {
+          "200": { $ref: "#/components/responses/SuccessResponse" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "404": { $ref: "#/components/responses/NotFound" },
+        },
+      },
+      put: {
+        tags: ["Authentication"],
+        security: [{ bearerAuth: [] }],
+        summary: "Update the current user's profile (email is not editable)",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ProfileUpdateRequest" },
+            },
+          },
+        },
+        responses: {
+          "200": { $ref: "#/components/responses/SuccessResponse" },
+          "400": { $ref: "#/components/responses/BadRequest" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "404": { $ref: "#/components/responses/NotFound" },
+        },
+      },
+    },
     "/api/v1/organization/create": {
       post: {
         tags: ["Organizations"],
@@ -718,6 +749,7 @@ const apiDocument = {
         properties: {
           email: { type: "string", format: "email" },
           password: { type: "string", minLength: 8 },
+          name: { type: "string", minLength: 1, maxLength: 120 },
           profile: { type: "string" },
           description: { type: "string" },
         },
@@ -728,6 +760,19 @@ const apiDocument = {
         properties: {
           email: { type: "string", format: "email" },
           password: { type: "string", minLength: 1 },
+        },
+      },
+      ProfileUpdateRequest: {
+        type: "object",
+        required: ["name", "profilePhoto", "description"],
+        properties: {
+          name: { type: "string", minLength: 1, maxLength: 120 },
+          profilePhoto: {
+            type: "string",
+            format: "uri",
+            description: "Empty string removes the profile photo.",
+          },
+          description: { type: "string", maxLength: 500 },
         },
       },
       OrganizationRequest: {

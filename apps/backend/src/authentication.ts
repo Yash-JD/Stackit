@@ -1,8 +1,9 @@
 import express, { type Response, type Request } from "express";
-import { SignupSchema, SigninSchema } from "../zod.ts";
+import { SignupSchema, SigninSchema, UpdateProfileSchema } from "../zod.ts";
 import { prisma } from "db/client";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { authMiddleware } from "../helper/authMiddleware";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -10,6 +11,84 @@ if (!JWT_SECRET) {
 }
 
 const router = express.Router();
+
+router.get(
+  "/api/v1/profile",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    const user = await prisma.user.findUnique({
+      where: { id: req.id, isDeleted: false },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        profilePhoto: true,
+        description: true,
+      },
+    });
+    if (!user) {
+      return res.status(404).json({ success: false, error: "USER_NOT_FOUND" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        ...user,
+        name: user.name ?? user.email.split("@")[0],
+        description: user.description ?? "",
+      },
+    });
+  },
+);
+
+router.put(
+  "/api/v1/profile",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    const { success, data } = UpdateProfileSchema.safeParse(req.body);
+    if (!success) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_PROFILE",
+      });
+    }
+
+    const user = await prisma.user.updateMany({
+      where: { id: req.id, isDeleted: false },
+      data: {
+        name: data.name,
+        profilePhoto: data.profilePhoto.trim() || null,
+        description: data.description.trim(),
+      },
+    });
+    if (user.count === 0) {
+      return res.status(404).json({ success: false, error: "USER_NOT_FOUND" });
+    }
+
+    const updatedProfile = await prisma.user.findUnique({
+      where: { id: req.id, isDeleted: false },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        profilePhoto: true,
+        description: true,
+      },
+    });
+    if (!updatedProfile) {
+      return res.status(404).json({ success: false, error: "USER_NOT_FOUND" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        ...updatedProfile,
+        name: updatedProfile.name ?? updatedProfile.email.split("@")[0],
+        description: updatedProfile.description ?? "",
+      },
+    });
+  },
+);
 
 router.post("/api/v1/signup", async (req: Request, res: Response) => {
   const { success, data } = SignupSchema.safeParse(req.body);
@@ -38,6 +117,7 @@ router.post("/api/v1/signup", async (req: Request, res: Response) => {
   await prisma.user.create({
     data: {
       email: data.email,
+      name: data.name?.trim() || data.email.split("@")[0],
       password: hash,
       profilePhoto: data.profile,
       description: data.description,

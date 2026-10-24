@@ -3,6 +3,7 @@ import z from "zod";
 export const SignupSchema = z.object({
   email: z.email(),
   password: z.string().min(8),
+  name: z.string().trim().min(1).max(120).optional(),
   profile: z.string(),
   description: z.string(),
 });
@@ -10,6 +11,26 @@ export const SignupSchema = z.object({
 export const SigninSchema = z.object({
   email: z.email(),
   password: z.string().min(1),
+});
+
+export const UpdateProfileSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  profilePhoto: z.union([
+    z
+      .string()
+      .max(2048)
+      .url()
+      .refine((value) => {
+        try {
+          const protocol = new URL(value).protocol;
+          return protocol === "http:" || protocol === "https:";
+        } catch {
+          return false;
+        }
+      }),
+    z.literal(""),
+  ]),
+  description: z.string().max(500),
 });
 
 export const OrgSchema = z.object({
