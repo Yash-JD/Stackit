@@ -56,6 +56,8 @@ Clients authenticate with a JWT in the WebSocket URL query parameter
 workspace membership and, for regular members, an active grant for that board.
 Admins and superadmins can join every board in their workspace. Every
 board-room event re-checks current access for the sender and recipients.
+The role-versus-board-grant decision is shared with the backend API to keep
+both services' authorization behavior consistent.
 `issue_moved` is relayed only when the issue's persisted section matches the
 message; the server includes its persisted position. `board_changed` only
 prompts clients to reload from the API and may identify an existing issue for

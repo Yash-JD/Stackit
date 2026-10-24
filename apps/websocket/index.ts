@@ -2,6 +2,7 @@ import { WebSocket, WebSocketServer } from "ws";
 import type { RawData } from "ws";
 import jwt from "jsonwebtoken";
 import { prisma } from "../../packages/db";
+import { canMembershipAccessBoard } from "../backend/helper/boardAccessPolicy";
 
 const JWT_SECRET: string = (() => {
   const secret = process.env.JWT_SECRET;
@@ -40,14 +41,14 @@ async function hasBoardAccess(userId: string, boardId: string) {
     select: { role: true },
   });
   if (!membership) return false;
-  if (membership.role !== "member") return true;
+  if (canMembershipAccessBoard(membership.role, false)) return true;
 
   // Regular members need an explicit grant in addition to workspace membership.
   const grant = await prisma.boardMembership.findFirst({
     where: { userId, boardId, isDeleted: false },
     select: { id: true },
   });
-  return Boolean(grant);
+  return canMembershipAccessBoard(membership.role, Boolean(grant));
 }
 
 class WsManager {
@@ -442,14 +443,20 @@ class WsManager {
               select: { role: true },
             });
             if (!membership) return { member, canAccess: false };
-            if (membership.role !== "member") {
+            if (canMembershipAccessBoard(membership.role, false)) {
               return { member, canAccess: true };
             }
             const grant = await prisma.boardMembership.findFirst({
               where: { userId: member.id, boardId, isDeleted: false },
               select: { id: true },
             });
-            return { member, canAccess: Boolean(grant) };
+            return {
+              member,
+              canAccess: canMembershipAccessBoard(
+                membership.role,
+                Boolean(grant),
+              ),
+            };
           }),
         );
         recipients.forEach(({ member, canAccess }) => {
