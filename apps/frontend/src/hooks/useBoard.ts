@@ -13,7 +13,6 @@ import {
 import type { BoardColumn, Card, CardLabel } from "../types";
 
 const SECTION_COLORS = ["#8d9baa", "#edb44f", "#6ec5b8", "#88a9df"];
-const CARD_LABELS: CardLabel[] = ["Research", "Build", "Design"];
 
 export function useBoard(boardId: string | undefined) {
   const [columns, setColumns] = useState<BoardColumn[]>([]);
@@ -61,13 +60,13 @@ export function useBoard(boardId: string | undefined) {
                   SECTION_COLORS[index % SECTION_COLORS.length] ?? "#8d9baa",
                 cards: issues
                   .filter((issue) => !issue.isDeleted)
-                  .map((issue, issueIndex) => ({
+                  .map((issue) => ({
                     id: issue.id,
                     title: issue.title,
-                    label:
-                      CARD_LABELS[issueIndex % CARD_LABELS.length] ?? "Build",
+                    label: issue.label,
                     description:
                       issue.description || "No description added yet.",
+                    dueDate: issue.dueDate,
                   })),
               } satisfies BoardColumn;
             }),
@@ -159,8 +158,20 @@ export function useBoard(boardId: string | undefined) {
   );
 
   const createCard = useCallback(
-    async (sectionId: string, cardTitle: string, description: string) => {
-      const issue = await createIssue(sectionId, cardTitle, description);
+    async (
+      sectionId: string,
+      cardTitle: string,
+      description: string,
+      label: CardLabel,
+      dueDate: string | null,
+    ) => {
+      const issue = await createIssue(
+        sectionId,
+        cardTitle,
+        description,
+        label,
+        dueDate,
+      );
       setColumns((current) =>
         current.map((column) =>
           column.id === sectionId
@@ -171,24 +182,40 @@ export function useBoard(boardId: string | undefined) {
                   {
                     id: issue.id,
                     title: issue.title,
-                    label:
-                      CARD_LABELS[column.cards.length % CARD_LABELS.length] ??
-                      "Build",
+                    label: issue.label,
                     description:
                       issue.description || "No description added yet.",
+                    dueDate: issue.dueDate,
                   },
                 ],
               }
             : column,
         ),
       );
+      window.dispatchEvent(
+        new CustomEvent("stackit:issue-activity-changed", {
+          detail: { issueId: issue.id },
+        }),
+      );
     },
     [],
   );
 
   const updateCard = useCallback(
-    async (cardId: string, cardTitle: string, description: string) => {
-      const issue = await updateIssue(cardId, cardTitle, description);
+    async (
+      cardId: string,
+      cardTitle: string,
+      description: string,
+      label: CardLabel,
+      dueDate: string | null,
+    ) => {
+      const issue = await updateIssue(
+        cardId,
+        cardTitle,
+        description,
+        label,
+        dueDate,
+      );
       setColumns((current) =>
         current.map((column) => ({
           ...column,
@@ -197,11 +224,18 @@ export function useBoard(boardId: string | undefined) {
               ? {
                   ...card,
                   title: issue.title,
+                  label: issue.label,
                   description: issue.description || "No description added yet.",
+                  dueDate: issue.dueDate,
                 }
               : card,
           ),
         })),
+      );
+      window.dispatchEvent(
+        new CustomEvent("stackit:issue-activity-changed", {
+          detail: { issueId: cardId },
+        }),
       );
     },
     [],
@@ -256,6 +290,11 @@ export function useBoard(boardId: string | undefined) {
 
       try {
         await moveIssue(cardId, targetColumnId);
+        window.dispatchEvent(
+          new CustomEvent("stackit:issue-activity-changed", {
+            detail: { issueId: cardId },
+          }),
+        );
       } catch (moveError) {
         setColumns((current) => {
           let latestCard = card;

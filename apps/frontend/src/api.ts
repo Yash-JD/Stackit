@@ -33,9 +33,36 @@ export type IssueSummary = {
   id: string;
   title: string;
   description: string;
+  label: "Design" | "Build" | "Research";
+  dueDate: string | null;
   boardId: string;
   sectionId: string;
   isDeleted: boolean;
+};
+
+export type IssueComment = {
+  id: string;
+  comment: string;
+  createdAt: string;
+  updatedAt: string;
+  isAuthor: boolean;
+  user: {
+    id: string;
+    email: string;
+    profilePhoto: string | null;
+  } | null;
+};
+
+export type IssueActivity = {
+  id: string;
+  action: string;
+  details: string | null;
+  createdAt: string;
+  actor: {
+    id: string;
+    email: string;
+    profilePhoto: string | null;
+  } | null;
 };
 
 export type OrganizationMember = {
@@ -454,13 +481,15 @@ export async function createIssue(
   sectionId: string,
   title: string,
   description: string,
+  label: IssueSummary["label"],
+  dueDate: string | null,
 ) {
   const response = await apiRequest<IssueSummary>(
     `/api/v1/issue/${sectionId}`,
     {
       method: "POST",
       authenticated: true,
-      body: JSON.stringify({ title, description }),
+      body: JSON.stringify({ title, description, label, dueDate }),
     },
   );
 
@@ -475,11 +504,13 @@ export async function updateIssue(
   issueId: string,
   title: string,
   description: string,
+  label: IssueSummary["label"],
+  dueDate: string | null,
 ) {
   const response = await apiRequest<IssueSummary>(`/api/v1/issue/${issueId}`, {
     method: "PUT",
     authenticated: true,
-    body: JSON.stringify({ title, description }),
+    body: JSON.stringify({ title, description, label, dueDate }),
   });
 
   if (!response.data) {
@@ -510,4 +541,54 @@ export async function moveIssue(issueId: string, sectionId: string) {
   }
 
   return response.data;
+}
+
+export async function getIssueComments(issueId: string) {
+  const response = await apiRequest<IssueComment[]>(
+    `/api/v1/comment/${encodeURIComponent(issueId)}`,
+    { authenticated: true },
+  );
+  if (!Array.isArray(response.data)) {
+    throw new Error("The server returned an invalid comments response");
+  }
+  return response.data;
+}
+
+export async function createIssueComment(issueId: string, comment: string) {
+  const response = await apiRequest<IssueComment>(
+    `/api/v1/comment/${encodeURIComponent(issueId)}`,
+    {
+      method: "POST",
+      authenticated: true,
+      body: JSON.stringify({ comment }),
+    },
+  );
+  if (!response.data) throw new Error("The server did not create the comment");
+  return response.data;
+}
+
+export async function updateIssueComment(commentId: string, comment: string) {
+  await apiRequest(`/api/v1/comment/${encodeURIComponent(commentId)}`, {
+    method: "PUT",
+    authenticated: true,
+    body: JSON.stringify({ comment }),
+  });
+}
+
+export async function deleteIssueComment(commentId: string) {
+  await apiRequest(`/api/v1/comment/${encodeURIComponent(commentId)}`, {
+    method: "DELETE",
+    authenticated: true,
+  });
+}
+
+export async function getIssueActivity(issueId: string) {
+  const response = await apiRequest<{ activities: IssueActivity[] }>(
+    `/api/v1/activity/${encodeURIComponent(issueId)}`,
+    { authenticated: true },
+  );
+  if (!Array.isArray(response.data?.activities)) {
+    throw new Error("The server returned an invalid activity response");
+  }
+  return response.data.activities;
 }

@@ -19,6 +19,7 @@ apps/frontend/src/
     AuthPage.tsx
     Sidebar.tsx
     BoardCanvas.tsx
+      CardDetail               Card description, due date, comments, activity
     BoardTopbar.tsx         Board header, top bar, and presence controls
     BoardToolbar.tsx
     OrganizationMembersDialog.tsx
@@ -76,6 +77,11 @@ bun run start
 - Members see only assigned boards and can manage cards there. Board and list
   management controls are hidden for members. The superadmin is displayed as
   protected with no removal or demotion action.
+- Card details support editable `Design`/`Build`/`Research` labels, optional
+  due dates, comment CRUD for the comment author, and a persisted activity
+  timeline. Board search matches titles and descriptions; the existing label
+  filter works on persisted card labels. No new notification delivery is
+  included in this phase.
 - WebSocket configuration and behavior are described in the
   [WebSocket guide](../websocket/README.md).
 

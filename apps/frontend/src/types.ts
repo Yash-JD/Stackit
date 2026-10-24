@@ -5,7 +5,7 @@ export type Card = {
   title: string;
   label: CardLabel;
   description: string;
-  due?: string;
+  dueDate: string | null;
 };
 
 export type BoardColumn = {

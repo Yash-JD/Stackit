@@ -1,6 +1,21 @@
-import { useState, type DragEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type DragEvent,
+  type FormEvent,
+} from "react";
 import { Check, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
 import type { BoardColumn, Card } from "../types";
+import {
+  createIssueComment,
+  deleteIssueComment,
+  getIssueActivity,
+  getIssueComments,
+  updateIssueComment,
+  type IssueActivity,
+  type IssueComment,
+} from "../api";
 
 type BoardCanvasProps = {
   columns: BoardColumn[];
@@ -258,8 +273,11 @@ function BoardColumnView({
                     Moving...
                   </span>
                 )}
-                {card.due && <span className="due-date">{card.due}</span>}
-                <span className="card-comments">•••</span>
+                {card.dueDate && (
+                  <span className="due-date">
+                    Due {formatDateOnly(card.dueDate)}
+                  </span>
+                )}
               </div>
             </button>
           </article>
@@ -274,15 +292,129 @@ function BoardColumnView({
 
 export function CardDetail({
   card,
+  sectionTitle,
   onClose,
   onDelete,
   onEdit,
 }: {
   card: Card;
+  sectionTitle: string;
   onClose: () => void;
   onDelete?: () => void;
   onEdit?: () => void;
 }) {
+  const [comments, setComments] = useState<IssueComment[]>([]);
+  const [activities, setActivities] = useState<IssueActivity[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [commentText, setCommentText] = useState("");
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [actionError, setActionError] = useState("");
+
+  const refreshCollaboration = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError("");
+    try {
+      const [nextComments, nextActivities] = await Promise.all([
+        getIssueComments(card.id),
+        getIssueActivity(card.id),
+      ]);
+      setComments(nextComments);
+      setActivities(nextActivities);
+    } catch (error) {
+      setLoadError(
+        error instanceof Error
+          ? error.message
+          : "Unable to load card collaboration.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [card.id]);
+
+  useEffect(() => {
+    void refreshCollaboration();
+  }, [refreshCollaboration]);
+
+  useEffect(() => {
+    const handleActivityChange = (event: Event) => {
+      if (
+        event instanceof CustomEvent &&
+        typeof event.detail === "object" &&
+        event.detail !== null &&
+        "issueId" in event.detail &&
+        event.detail.issueId === card.id
+      ) {
+        void refreshCollaboration();
+      }
+    };
+
+    window.addEventListener(
+      "stackit:issue-activity-changed",
+      handleActivityChange,
+    );
+    return () =>
+      window.removeEventListener(
+        "stackit:issue-activity-changed",
+        handleActivityChange,
+      );
+  }, [card.id, refreshCollaboration]);
+
+  const handleCreateComment = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const text = commentText.trim();
+    if (!text || isSubmitting) return;
+    setActionError("");
+    setIsSubmitting(true);
+    try {
+      await createIssueComment(card.id, text);
+      setCommentText("");
+      await refreshCollaboration();
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : "Unable to add comment.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSaveComment = async (commentId: string) => {
+    const text = editingCommentText.trim();
+    if (!text || isSubmitting) return;
+    setActionError("");
+    setIsSubmitting(true);
+    try {
+      await updateIssueComment(commentId, text);
+      setEditingCommentId(null);
+      setEditingCommentText("");
+      await refreshCollaboration();
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : "Unable to update comment.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    setActionError("");
+    setIsSubmitting(true);
+    try {
+      await deleteIssueComment(commentId);
+      await refreshCollaboration();
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : "Unable to delete comment.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="modal-backdrop centered-modal-backdrop" onClick={onClose}>
       <aside
@@ -293,6 +425,7 @@ export function CardDetail({
         onClick={(event) => event.stopPropagation()}
       >
         <button
+          type="button"
           className="close-modal icon-button"
           onClick={onClose}
           aria-label="Close card"
@@ -304,21 +437,159 @@ export function CardDetail({
           {card.label}
         </div>
         <h2 id="card-detail-title">{card.title}</h2>
-        <p className="detail-caption">In Product launch</p>
+        <p className="detail-caption">In {sectionTitle}</p>
         <div className="detail-section">
           <h4>Description</h4>
           <p>{card.description}</p>
         </div>
+        {card.dueDate && (
+          <div className="detail-section">
+            <h4>Due date</h4>
+            <p>{formatDateOnly(card.dueDate)}</p>
+          </div>
+        )}
+        <div className="detail-section">
+          <h4>
+            Comments
+            {!isLoading && !loadError && ` (${comments.length})`}
+          </h4>
+          <form className="comment-form" onSubmit={handleCreateComment}>
+            <textarea
+              value={commentText}
+              onChange={(event) => setCommentText(event.target.value)}
+              placeholder="Write a comment..."
+              aria-label="Write a comment"
+              maxLength={4000}
+              required
+            />
+            <button
+              type="submit"
+              className="primary-button"
+              disabled={isSubmitting || !commentText.trim()}
+            >
+              {isSubmitting ? "Saving..." : "Add comment"}
+            </button>
+          </form>
+          {actionError && (
+            <p className="form-error" role="alert">
+              {actionError}
+            </p>
+          )}
+          {loadError && (
+            <div className="collaboration-error" role="alert">
+              <span>{loadError}</span>
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => void refreshCollaboration()}
+              >
+                Retry
+              </button>
+            </div>
+          )}
+          {isLoading ? (
+            <p className="members-empty" role="status">
+              Loading comments...
+            </p>
+          ) : loadError ? null : comments.length === 0 ? (
+            <p className="members-empty">No comments yet.</p>
+          ) : (
+            <ul className="comment-list">
+              {comments.map((comment) => (
+                <li className="comment-item" key={comment.id}>
+                  <div className="comment-heading">
+                    <strong>{comment.user?.email ?? "Former member"}</strong>
+                    <time dateTime={comment.createdAt}>
+                      {formatTimestamp(comment.createdAt)}
+                    </time>
+                  </div>
+                  {editingCommentId === comment.id ? (
+                    <>
+                      <textarea
+                        value={editingCommentText}
+                        onChange={(event) =>
+                          setEditingCommentText(event.target.value)
+                        }
+                        aria-label="Edit comment"
+                        maxLength={4000}
+                      />
+                      <div className="comment-actions">
+                        <button
+                          type="button"
+                          className="text-button"
+                          onClick={() => setEditingCommentId(null)}
+                          disabled={isSubmitting}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          className="text-button"
+                          onClick={() => void handleSaveComment(comment.id)}
+                          disabled={isSubmitting || !editingCommentText.trim()}
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <p>{comment.comment}</p>
+                  )}
+                  {comment.isAuthor && editingCommentId !== comment.id && (
+                    <div className="comment-actions">
+                      <button
+                        type="button"
+                        className="text-button"
+                        onClick={() => {
+                          setEditingCommentId(comment.id);
+                          setEditingCommentText(comment.comment);
+                        }}
+                        disabled={isSubmitting}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="text-button danger-text"
+                        onClick={() => void handleDeleteComment(comment.id)}
+                        disabled={isSubmitting}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
         <div className="detail-section">
           <h4>Activity</h4>
-          <div className="activity-row">
-            <div className="mini-avatar">Y</div>
-            <p>
-              <strong>Yash</strong> opened this card
-              <br />
-              <span>Just now</span>
+          {isLoading ? (
+            <p className="members-empty" role="status">
+              Loading activity...
             </p>
-          </div>
+          ) : loadError ? null : activities.length === 0 ? (
+            <p className="members-empty">No activity yet.</p>
+          ) : (
+            <ul className="activity-list">
+              {activities.map((activity) => (
+                <li className="activity-row" key={activity.id}>
+                  <div className="mini-avatar">
+                    {activity.actor?.email.charAt(0).toUpperCase() ?? "?"}
+                  </div>
+                  <p>
+                    <strong>{activity.actor?.email ?? "Former member"}</strong>{" "}
+                    {formatActivity(activity)}
+                    <br />
+                    <time dateTime={activity.createdAt}>
+                      {formatTimestamp(activity.createdAt)}
+                    </time>
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
         {(onEdit || onDelete) && (
           <div className="detail-actions">
@@ -337,4 +608,37 @@ export function CardDetail({
       </aside>
     </div>
   );
+}
+
+function formatDateOnly(value: string) {
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeZone: "UTC",
+  }).format(new Date(value));
+}
+
+function formatTimestamp(value: string) {
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function formatActivity(activity: IssueActivity) {
+  switch (activity.action) {
+    case "created":
+      return "created this card";
+    case "updated":
+      return `updated ${activity.details ?? "card details"}`;
+    case "moved":
+      return `moved this card ${activity.details ?? "to another list"}`;
+    case "commented":
+      return "added a comment";
+    case "comment_edited":
+      return "edited a comment";
+    case "comment_deleted":
+      return "deleted a comment";
+    default:
+      return "updated this card";
+  }
 }

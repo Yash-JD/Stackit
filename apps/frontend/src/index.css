@@ -1405,12 +1405,6 @@ button {
   background: rgba(224, 180, 77, 0.12);
   font-size: 9px;
 }
-.card-comments {
-  margin-left: auto;
-  color: #718184;
-  font-size: 12px;
-  letter-spacing: 1px;
-}
 .add-card-button,
 .add-list-button {
   display: flex;
@@ -1540,6 +1534,76 @@ button {
 .activity-row span {
   color: #718184;
   font-size: 11px;
+}
+.activity-list,
+.comment-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.activity-row time,
+.comment-heading time {
+  color: #718184;
+  font-size: 11px;
+}
+.comment-form {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+}
+.comment-form textarea,
+.comment-item textarea {
+  width: 100%;
+  min-height: 76px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: #edf7f3;
+  background: rgba(255, 255, 255, 0.045);
+  font-size: 12px;
+  resize: vertical;
+}
+.comment-item {
+  padding: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.025);
+}
+.comment-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 5px 12px;
+}
+.comment-heading strong {
+  color: #dce8e5;
+  font-size: 11px;
+}
+.comment-item > p {
+  margin: 8px 0 0;
+  color: #b4c1c0;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.comment-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+.collaboration-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #e7a6a0;
+  font-size: 11px;
+  overflow-wrap: anywhere;
 }
 @keyframes slide-in {
   from {

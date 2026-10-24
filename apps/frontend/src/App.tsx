@@ -514,6 +514,8 @@ function Board() {
   const [dialog, setDialog] = useState<BoardDialog | null>(null);
   const [dialogTitle, setDialogTitle] = useState("");
   const [dialogDescription, setDialogDescription] = useState("");
+  const [dialogLabel, setDialogLabel] = useState<CardLabel>("Build");
+  const [dialogDueDate, setDialogDueDate] = useState("");
   const [dialogError, setDialogError] = useState("");
   const [isSubmittingDialog, setIsSubmittingDialog] = useState(false);
   const visibleColumns = useMemo(
@@ -521,9 +523,9 @@ function Board() {
       columns.map((column) => ({
         ...column,
         cards: column.cards.filter((card) => {
-          const matchesSearch = card.title
-            .toLowerCase()
-            .includes(query.toLowerCase());
+          const matchesSearch =
+            card.title.toLowerCase().includes(query.toLowerCase()) ||
+            card.description.toLowerCase().includes(query.toLowerCase());
           const matchesFilter =
             activeFilter === "all" || card.label === activeFilter;
           return matchesSearch && matchesFilter;
@@ -538,9 +540,13 @@ function Board() {
     if (nextDialog.type === "create-card") {
       setDialogTitle("");
       setDialogDescription("");
+      setDialogLabel("Build");
+      setDialogDueDate("");
     } else if (nextDialog.type === "edit-card") {
       setDialogTitle(nextDialog.card.title);
       setDialogDescription(nextDialog.card.description);
+      setDialogLabel(nextDialog.card.label);
+      setDialogDueDate(nextDialog.card.dueDate?.slice(0, 10) ?? "");
     }
   };
 
@@ -566,6 +572,8 @@ function Board() {
             dialog.columnId,
             title,
             dialogDescription.trim() || "No description added yet.",
+            dialogLabel,
+            dialogDueDate || null,
           );
           break;
         case "edit-card":
@@ -573,8 +581,21 @@ function Board() {
             dialog.card.id,
             title,
             dialogDescription.trim() || "No description added yet.",
+            dialogLabel,
+            dialogDueDate || null,
           );
-          setSelectedCard(null);
+          setSelectedCard((current) =>
+            current?.id === dialog.card.id
+              ? {
+                  ...current,
+                  title,
+                  description:
+                    dialogDescription.trim() || "No description added yet.",
+                  label: dialogLabel,
+                  dueDate: dialogDueDate || null,
+                }
+              : current,
+          );
           break;
         default:
           return;
@@ -670,6 +691,11 @@ function Board() {
       {selectedCard && (
         <CardDetail
           card={selectedCard}
+          sectionTitle={
+            columns.find((column) =>
+              column.cards.some((card) => card.id === selectedCard.id),
+            )?.title ?? "Board"
+          }
           onClose={() => setSelectedCard(null)}
           onEdit={() => {
             const card = selectedCard;
@@ -762,6 +788,33 @@ function Board() {
                       setDialogDescription(event.target.value)
                     }
                     placeholder="Add a description"
+                  />
+                </label>
+                <label>
+                  <span>Label</span>
+                  <select
+                    className="dialog-select"
+                    value={dialogLabel}
+                    onChange={(event) =>
+                      setDialogLabel(
+                        event.target.value === "Design" ||
+                          event.target.value === "Research"
+                          ? event.target.value
+                          : "Build",
+                      )
+                    }
+                  >
+                    <option value="Design">Design</option>
+                    <option value="Build">Build</option>
+                    <option value="Research">Research</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Due date</span>
+                  <input
+                    type="date"
+                    value={dialogDueDate}
+                    onChange={(event) => setDialogDueDate(event.target.value)}
                   />
                 </label>
                 {dialogError && (
