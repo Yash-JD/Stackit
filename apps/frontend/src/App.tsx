@@ -13,6 +13,8 @@ import { Sidebar } from "./components/Sidebar";
 import { WorkspaceHome } from "./pages/WorkspaceHome";
 import { BoardsPage } from "./pages/BoardsPage";
 import { BoardPage } from "./pages/BoardPage";
+import { MembersPage } from "./pages/MembersPage";
+import { SettingsPage } from "./pages/SettingsPage";
 import { useWorkspaceBoards } from "./hooks/useWorkspaceBoards";
 import type { WorkspaceLayoutContext } from "./types";
 
@@ -27,6 +29,8 @@ export function App() {
             <Route path="/" element={<WorkspaceHome />} />
             <Route path="/boards" element={<BoardsPage />} />
             <Route path="/board/:boardId" element={<BoardPage />} />
+            <Route path="/members" element={<MembersPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
             <Route path="/profile" element={<ProfilePage />} />
           </Route>
         </Route>

@@ -270,11 +270,7 @@ export function WorkspaceHome() {
                   <ChevronRight size={16} className="quick-link-arrow" />
                 </Link>
 
-                <button
-                  type="button"
-                  className="quick-link-card"
-                  onClick={() => setShowMembersDialog(true)}
-                >
+                <Link to="/members" className="quick-link-card">
                   <div className="quick-link-icon icon-indigo">
                     <Users size={18} />
                   </div>
@@ -284,19 +280,9 @@ export function WorkspaceHome() {
                   </div>
                   <span className="quick-link-badge">Manage</span>
                   <ChevronRight size={16} className="quick-link-arrow" />
-                </button>
+                </Link>
 
-                <button
-                  type="button"
-                  className="quick-link-card"
-                  onClick={() => {
-                    setSettingsName(selectedWorkspace.organization.name);
-                    setSettingsDesc(selectedWorkspace.organization.description ?? "");
-                    setSettingsError("");
-                    setConfirmDeleteOrg(false);
-                    setShowWorkspaceSettings(true);
-                  }}
-                >
+                <Link to="/settings" className="quick-link-card">
                   <div className="quick-link-icon icon-amber">
                     <Settings size={18} />
                   </div>
@@ -308,7 +294,7 @@ export function WorkspaceHome() {
                   </div>
                   <span className="quick-link-badge">{canManageWorkspace ? "Admin" : "Info"}</span>
                   <ChevronRight size={16} className="quick-link-arrow" />
-                </button>
+                </Link>
 
                 <Link to="/profile" className="quick-link-card">
                   <div className="quick-link-icon icon-purple">

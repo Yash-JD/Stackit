@@ -450,7 +450,10 @@ export function Sidebar({
         <button
           className={`nav-item ${location.pathname === "/" ? "active" : ""}`}
           type="button"
-          onClick={() => navigate("/")}
+          onClick={() => {
+            navigate("/");
+            onClose();
+          }}
           aria-label="Home"
           title={isCollapsed ? "Home" : undefined}
         >
@@ -459,26 +462,34 @@ export function Sidebar({
         <button
           className={`nav-item ${location.pathname === "/boards" ? "active" : ""}`}
           type="button"
-          onClick={() => navigate("/boards")}
+          onClick={() => {
+            navigate("/boards");
+            onClose();
+          }}
           aria-label="Boards"
           title={isCollapsed ? "Boards" : undefined}
         >
           <LayoutGrid size={17} /> <span>Boards</span>
         </button>
         <button
-          className="nav-item"
+          className={`nav-item ${location.pathname === "/members" ? "active" : ""}`}
           type="button"
-          onClick={() => setShowMembersDialog(true)}
+          onClick={() => {
+            navigate("/members");
+            onClose();
+          }}
           aria-label="Members"
           title={isCollapsed ? "Members" : undefined}
         >
           <Users size={17} /> <span>Members</span>
         </button>
         <button
-          className="nav-item"
+          className={`nav-item ${location.pathname === "/settings" ? "active" : ""}`}
           type="button"
-          onClick={openOrganizationSettings}
-          disabled={!canManageWorkspace}
+          onClick={() => {
+            navigate("/settings");
+            onClose();
+          }}
           aria-label="Settings"
           title={isCollapsed ? "Settings" : undefined}
         >
