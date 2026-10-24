@@ -120,12 +120,15 @@ are made:
   client messages do not authorize or supply authoritative mutation data.
 - The ordering migration is generated but has not been applied to a database.
 
-### Phase 13 — Quality and polish
+### Phase 13 — Quality and polish (in progress)
 
-- Add focused backend, frontend, WebSocket, and data-layer automated tests.
+- Added database-independent backend unit tests for card ordering and the
+  shared board-access policy; frontend, WebSocket, and database integration
+  coverage remains.
 - Improve accessibility, keyboard use, responsive layouts, and interaction
-  feedback.
-- Standardize loading, empty, retry, and error states.
+  feedback. Card moves now have keyboard-accessible controls.
+- Standardize loading, empty, retry, and error states. Board loading errors
+  include retry controls and empty lists have explanatory text.
 - Add regression coverage for workspace permissions, invite delivery failures,
   optimistic updates, and real-time behavior.
 
@@ -155,10 +158,10 @@ are made:
 - Phase 12 ordering migration is not applied. Generate/validate the Prisma
   client as needed, then review and apply migrations only against the intended
   database.
-- The repository currently has no dedicated automated test suite or CI
-  workflow documented here; add regression coverage for permissions,
-  collaboration, invitation failures, and optimistic updates as part of the
-  quality phase.
+- The test suite currently covers issue-ordering rules only; add regression
+  coverage for permissions, collaboration, invitation failures, API
+  persistence, and optimistic updates as Phase 13 continues. No CI workflow
+  is configured.
 
 ## Documentation maintenance
 
