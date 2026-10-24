@@ -24,7 +24,8 @@ product's collaboration features are delivered.
    boards the signed-in user can access available during navigation.
 4. **Plan work on a board.** A board contains sections/lists; sections contain
    issues/cards. Admins and superadmins manage boards and lists. Members can
-   create, edit, delete, and move cards on boards assigned to them.
+   create, edit, delete, and move cards on boards assigned to them. Cards have
+   a `Design`, `Build`, or `Research` label and an optional date-only due date.
 5. **Move work.** A card can be dragged between sections. The UI moves it
    optimistically and restores its original location if the API request
    fails. The backend persists the destination section, but not ordering
@@ -84,27 +85,22 @@ database models from `packages/db`.
 - Workspace `superadmin`/`admin`/`member` authorization with board-scoped
   member access, role/grant management, and superadmin removal/demotion
   protection.
-- Backend comment CRUD endpoints exist; full user-facing comments/activity
-  collaboration is still planned.
+- Card detail collaboration: comments can be listed, added, edited, or
+  soft-deleted by their author; the card's activity timeline records card
+  creation, metadata edits, moves, and comment changes.
+- Card label and due-date metadata are persisted. Board search covers card
+  titles and descriptions and the existing label filter uses saved labels.
 
 See [frontend learning notes](./FRONTEND_LEARNING.md) for the detailed
 frontend phase history and implementation concepts.
 
 ## Development roadmap
 
-Phases 1–10 are implemented in code. The Phase 10 database migrations have
-been generated and validated but must still be applied to the target database.
+Phases 1–11 are implemented in code. The Phase 10 and Phase 11 database
+migrations have been generated and validated but must still be applied to the
+target database.
 Continue with the following phases, adjusting scope as real product decisions
 are made:
-
-### Phase 11 — Project collaboration tools
-
-- Integrate comments into card details and provide authorship and useful
-  context.
-- Add activity history for meaningful workspace/board/card events.
-- Add task workflow fields such as due dates, labels, and other agreed
-  prioritization metadata.
-- Decide filtering, search, and notification behavior for these features.
 
 ### Phase 12 — Real-time collaboration
 
@@ -134,21 +130,23 @@ are made:
 
 ## Known limitations and decisions to revisit
 
-- The Phase 10 migrations are not applied automatically by schema generation.
-  Apply the reviewed migrations before using board grants or `superadmin`
-  roles against an existing database.
+- The Phase 10 and 11 migrations are not applied automatically by schema
+  generation. Apply the reviewed migrations before using the new roles, board
+  grants, card metadata, or activity API against an existing database.
 - The legacy migration promotes the oldest active `admin` membership in each
   workspace to `superadmin`, because the old schema did not record a workspace
   creator. It intentionally does not assign boards to existing members.
+- Phase 11 uses a fixed set of single-select labels and date-only due dates.
+  There are no card assignments, custom labels, or new notification delivery;
+  notifications remain part of future real-time product decisions.
 - Card moves persist a destination section, not within-section ordering.
 - WebSocket board-room events exist on the server, but the browser is not
   fully wired for board real-time updates. The People dialog does use sockets
   for failed invitation email notices.
-- Backend comment endpoints exist, but the complete comments/activity user
-  workflow has not been delivered.
 - The repository currently has no dedicated automated test suite or CI
-  workflow documented here; add regression coverage for Phase 10
-  authorization boundaries as part of the quality phase.
+  workflow documented here; add regression coverage for permissions,
+  collaboration, invitation failures, and optimistic updates as part of the
+  quality phase.
 
 ## Documentation maintenance
 

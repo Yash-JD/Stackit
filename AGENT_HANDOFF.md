@@ -12,8 +12,9 @@ secret environment values into this file.
 - **Layout:** Bun/Turborepo monorepo with React frontend, Express API,
   WebSocket service, and shared Prisma/PostgreSQL package.
 - **Package manager:** Bun 1.3.14.
-- **Current product milestone:** Phase 10 is implemented in code and validated;
-  its migrations are not yet applied to a database.
+- **Current product milestone:** Phase 11 collaboration features are implemented
+  in code and validated. Phase 10 and Phase 11 migrations are not yet applied
+  to a database; Phase 12 is next.
 - **Canonical docs:** [project flow and roadmap](./PROJECT_FLOW.md),
   [root setup](./README.md), and the four package guides linked below.
 
@@ -43,17 +44,21 @@ secret environment values into this file.
   member roles and board grants, and removing non-superadmin members.
 - Backend authorization filters board/list reads and protects board/list
   management, card/comment operations, membership changes, and invite flows.
+- Cards persist a single `Design`/`Build`/`Research` label and optional
+  date-only due date. Search matches card titles and descriptions.
+- Card detail loads comments and activity history. Authors may edit or
+  soft-delete their comments. Activity records card creation, card metadata
+  updates, moves, and comment create/edit/delete actions.
 
 ### Existing foundations not fully productized
 
-- Backend comment CRUD exists; a complete comments/activity workflow is
-  planned.
 - WebSocket server supports board room presence and event relay, but the
   frontend is not fully integrated with board-level real-time updates.
-- Phase 10 migrations add board grants and `superadmin`. They are generated
-  and validated but not applied. The legacy migration promotes the oldest
-  active admin membership as superadmin because prior schema did not record
-  workspace creators; existing members are intentionally not granted boards.
+- Phase 10 migrations add board grants and `superadmin`; Phase 11 adds card
+  metadata and issue activity. All migrations are generated and validated but
+  not applied. The legacy migration promotes the oldest active admin
+  membership as superadmin because prior schema did not record workspace
+  creators; existing members are intentionally not granted boards.
 - Card destination-section moves persist; order within a section does not.
 
 ## Architecture and package guides
@@ -148,6 +153,13 @@ scope.
   boards. Board and list creation/management remain admin/superadmin-only.
 - Existing regular members receive no board grants during migration; an admin
   must explicitly assign their boards after the migration.
+- Labels are a fixed single-select set (`Design`, `Build`, `Research`), and
+  due dates are date-only values. No custom labels, card assignments, or new
+  notification delivery was added in Phase 11.
+- Issue activity is transactionally recorded for issue creation, metadata
+  edits, list moves, and comment create/edit/delete. The activity API checks
+  current board access. Comment deletion is soft deletion, and comment edits
+  or deletes are author-only.
 - Invitations are sent to an email address and can be accepted/declined by
   the account with that matching email.
 - Invitation delivery failure is a persisted status and should be treated
@@ -184,13 +196,13 @@ scope.
 2. Inspect `git status` and existing diffs before editing; preserve unrelated
    staged and unstaged work.
 3. Confirm which roadmap phase or bug is in scope from the latest user
-   request. Phase 10 is implemented; Phase 11 (project collaboration tools) is
-   next after the reviewed Phase 10 migrations have been applied.
+   request. Phase 11 is implemented; Phase 12 (real-time collaboration) is
+   next after reviewing and applying the pending Phase 10/11 migrations.
 4. Trace a continuous feature across UI, API, authorization, WebSocket, and
    data model as applicable; preserve established patterns.
 5. Validate with the narrowest relevant type-check/build/tests and report
-   what was and was not exercised. Phase 10 validation completed with Prisma
-   schema validation, generated client, API/frontend/WebSocket type-checks,
+   what was and was not exercised. Phases 10 and 11 were validated with Prisma
+   schema validation/client generation, affected API/frontend type-checks,
    frontend build, and diff checks. No DB migration or live user-data change
    was run; no dedicated automated test suite is currently defined.
 6. Update this handoff and the project flow before finishing, and update
