@@ -640,6 +640,29 @@ export async function deleteIssue(issueId: string) {
   });
 }
 
+export type CardDetailResponse = IssueSummary & {
+  section?: {
+    id: string;
+    title: string;
+  };
+  board?: {
+    id: string;
+    title: string;
+    orgId: string;
+  };
+};
+
+export async function getIssue(issueId: string): Promise<CardDetailResponse> {
+  const response = await apiRequest<CardDetailResponse>(
+    `/api/v1/issue/detail/${encodeURIComponent(issueId)}`,
+    { authenticated: true },
+  );
+  if (!response.data) {
+    throw new Error(response.error || "The card could not be found");
+  }
+  return response.data;
+}
+
 export async function moveIssue(
   issueId: string,
   sectionId: string,

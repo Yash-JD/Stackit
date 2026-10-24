@@ -93,15 +93,83 @@ router.post(
 );
 
 router.get(
-  "/api/v1/issue/:sectionId",
+  "/api/v1/issue/detail/:issueId",
   authMiddleware,
   async (req: Request, res: Response) => {
     const userId = req.id;
-    const sectionId = req.params.sectionId as string;
+    const issueId = req.params.issueId as string;
 
+    const issue = await prisma.issue.findFirst({
+      where: {
+        id: issueId,
+        isDeleted: false,
+        section: { isDeleted: false },
+        board: { isDeleted: false, organization: { isDeleted: false } },
+      },
+      include: {
+        section: { select: { id: true, title: true } },
+        board: { select: { id: true, title: true, orgId: true } },
+      },
+    });
+
+    if (!issue) {
+      return res.status(404).json({
+        success: false,
+        error: ISSUE_ERRORS.ISSUE_NOT_FOUND,
+      });
+    }
+    if (!(await hasBoardAccess(userId, issue.boardId))) {
+      return res.status(403).json({
+        success: false,
+        error: COMMON_ERRORS.UNAUTHORIZED,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: issue,
+    });
+  },
+);
+
+router.get(
+  "/api/v1/issue/:paramId",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    const userId = req.id;
+    const paramId = req.params.paramId as string;
+
+    // First check if paramId is a card/issue
+    const issue = await prisma.issue.findFirst({
+      where: {
+        id: paramId,
+        isDeleted: false,
+        section: { isDeleted: false },
+        board: { isDeleted: false, organization: { isDeleted: false } },
+      },
+      include: {
+        section: { select: { id: true, title: true } },
+        board: { select: { id: true, title: true, orgId: true } },
+      },
+    });
+
+    if (issue) {
+      if (!(await hasBoardAccess(userId, issue.boardId))) {
+        return res.status(403).json({
+          success: false,
+          error: COMMON_ERRORS.UNAUTHORIZED,
+        });
+      }
+      return res.status(200).json({
+        success: true,
+        data: issue,
+      });
+    }
+
+    // Otherwise check if paramId is a section (list)
     const section = await prisma.section.findFirst({
       where: {
-        id: sectionId,
+        id: paramId,
         isDeleted: false,
         board: { isDeleted: false, organization: { isDeleted: false } },
       },
@@ -111,27 +179,28 @@ router.get(
       },
     });
 
-    if (!section) {
-      return res.status(404).json({
-        success: false,
-        error: SECTION_ERRORS.SECTION_NOT_FOUND,
+    if (section) {
+      if (!(await hasBoardAccess(userId, section.boardId))) {
+        return res.status(403).json({
+          success: false,
+          error: COMMON_ERRORS.UNAUTHORIZED,
+        });
+      }
+
+      const issues = await prisma.issue.findMany({
+        where: { sectionId: paramId, isDeleted: false },
+        orderBy: [{ position: "asc" }, { createdAt: "asc" }, { id: "asc" }],
       });
-    }
-    if (!(await hasBoardAccess(userId, section.boardId))) {
-      return res.status(403).json({
-        success: false,
-        error: COMMON_ERRORS.UNAUTHORIZED,
+
+      return res.status(200).json({
+        success: true,
+        data: issues,
       });
     }
 
-    const issues = await prisma.issue.findMany({
-      where: { sectionId, isDeleted: false },
-      orderBy: [{ position: "asc" }, { createdAt: "asc" }, { id: "asc" }],
-    });
-
-    return res.status(200).json({
-      success: true,
-      data: issues,
+    return res.status(404).json({
+      success: false,
+      error: ISSUE_ERRORS.ISSUE_NOT_FOUND,
     });
   },
 );
@@ -226,42 +295,6 @@ router.put(
       }
       return updatedIssue;
     });
-
-    return res.status(200).json({
-      success: true,
-      data: issue,
-    });
-  },
-);
-
-router.get(
-  "/api/v1/issue/:issueId",
-  authMiddleware,
-  async (req: Request, res: Response) => {
-    const userId = req.id;
-    const issueId = req.params.issueId as string;
-
-    const issue = await prisma.issue.findFirst({
-      where: {
-        id: issueId,
-        isDeleted: false,
-        section: { isDeleted: false },
-        board: { isDeleted: false, organization: { isDeleted: false } },
-      },
-    });
-
-    if (!issue) {
-      return res.status(404).json({
-        success: false,
-        error: ISSUE_ERRORS.ISSUE_NOT_FOUND,
-      });
-    }
-    if (!(await hasBoardAccess(userId, issue.boardId))) {
-      return res.status(403).json({
-        success: false,
-        error: COMMON_ERRORS.UNAUTHORIZED,
-      });
-    }
 
     return res.status(200).json({
       success: true,

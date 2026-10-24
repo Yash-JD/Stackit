@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate, useOutletContext, useParams } from "react-router";
-import { BoardCanvas, CardDetail } from "../components/BoardCanvas";
+import { BoardCanvas } from "../components/BoardCanvas";
 import { BoardHeader, BoardTopbar } from "../components/BoardTopbar";
 import { BoardToolbar } from "../components/BoardToolbar";
 import { useBoard } from "../hooks/useBoard";
@@ -36,7 +36,6 @@ export function BoardPage() {
   } = useBoard(boardId);
   const [query, setQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<"all" | CardLabel>("all");
-  const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [showAddList, setShowAddList] = useState(false);
   const [newListTitle, setNewListTitle] = useState("");
   const [dialog, setDialog] = useState<BoardDialog | null>(null);
@@ -53,16 +52,6 @@ export function BoardPage() {
     return () =>
       window.removeEventListener("stackit:board-deleted", handleBoardDeleted);
   }, [navigate]);
-
-  useEffect(() => {
-    setSelectedCard((current) => {
-      if (!current) return current;
-      const updatedCard = columns
-        .flatMap((column) => column.cards)
-        .find((card) => card.id === current.id);
-      return updatedCard ?? null;
-    });
-  }, [columns]);
 
   const visibleColumns = useMemo(
     () =>
@@ -130,18 +119,6 @@ export function BoardPage() {
             dialogLabel,
             dialogDueDate || null,
           );
-          setSelectedCard((current) =>
-            current?.id === dialog.card.id
-              ? {
-                  ...current,
-                  title,
-                  description:
-                    dialogDescription.trim() || "No description added yet.",
-                  label: dialogLabel,
-                  dueDate: dialogDueDate || null,
-                }
-              : current,
-          );
           break;
         default:
           return;
@@ -166,7 +143,6 @@ export function BoardPage() {
       if (dialog.type === "delete-card") {
         await deleteCard(dialog.card.id);
         setDialog(null);
-        setSelectedCard(null);
       }
     } catch (error) {
       setDialogError(
@@ -203,7 +179,7 @@ export function BoardPage() {
           socketStatus={socketStatus}
           onRetrySocket={retryBoardSocket}
         />
-        <BoardHeader title={boardTitle} />
+        <BoardHeader title={boardTitle} boardId={boardId} />
         <BoardToolbar
           query={query}
           activeFilter={activeFilter}
@@ -248,7 +224,13 @@ export function BoardPage() {
             onAddCard={(columnId) =>
               openDialog({ type: "create-card", columnId })
             }
-            onSelectCard={setSelectedCard}
+            onSelectCard={(card) => {
+              if (boardId) {
+                navigate(`/board/${boardId}/card/${card.id}`);
+              } else {
+                navigate(`/card/${card.id}`);
+              }
+            }}
             onEditCard={(card) => openDialog({ type: "edit-card", card })}
             onDeleteCard={(card) => openDialog({ type: "delete-card", card })}
             showAddList={showAddList}
@@ -260,28 +242,6 @@ export function BoardPage() {
           />
         )}
       </main>
-      {selectedCard && (
-        <CardDetail
-          card={selectedCard}
-          sectionTitle={
-            columns.find((column) =>
-              column.cards.some((card) => card.id === selectedCard.id),
-            )?.title ?? "Board"
-          }
-          onClose={() => setSelectedCard(null)}
-          onEdit={() => {
-            const card = selectedCard;
-            setSelectedCard(null);
-            openDialog({ type: "edit-card", card });
-          }}
-          onDelete={() => {
-            const card = selectedCard;
-            setSelectedCard(null);
-            openDialog({ type: "delete-card", card });
-          }}
-          onActivityChanged={() => notifyBoardChanged(selectedCard.id)}
-        />
-      )}
       {dialog && (
         <div
           className="modal-backdrop centered-modal-backdrop"

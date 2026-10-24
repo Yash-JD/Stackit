@@ -1,4 +1,5 @@
-import { Bell, Menu, Sparkles, Users } from "lucide-react";
+import { Bell, Check, Link2, Menu, Sparkles } from "lucide-react";
+import { useState } from "react";
 import { useNavigate } from "react-router";
 import type { BoardPresenceUser, BoardSocketStatus } from "../hooks/useBoard";
 
@@ -86,7 +87,28 @@ export function BoardTopbar({
   );
 }
 
-export function BoardHeader({ title = "Board" }: { title?: string }) {
+export function BoardHeader({
+  title = "Board",
+  boardId,
+}: {
+  title?: string;
+  boardId?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = async () => {
+    try {
+      const url = boardId
+        ? `${window.location.origin}/board/${boardId}`
+        : window.location.href;
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch (err) {
+      console.error("Failed to copy board link:", err);
+    }
+  };
+
   return (
     <section className="board-header">
       <div>
@@ -97,8 +119,14 @@ export function BoardHeader({ title = "Board" }: { title?: string }) {
         <p>Turn the next big idea into something people can use.</p>
       </div>
       <div className="board-header-actions">
-        <button className="share-button">
-          <Users size={16} /> Share board
+        <button
+          type="button"
+          className={`share-button ${copied ? "copied" : ""}`}
+          onClick={handleShare}
+          title={copied ? "Board link copied to clipboard!" : "Copy board link"}
+        >
+          {copied ? <Check size={16} /> : <Link2 size={16} />}
+          <span>{copied ? "Link copied!" : "Share board"}</span>
         </button>
       </div>
     </section>
