@@ -12,9 +12,9 @@ secret environment values into this file.
 - **Layout:** Bun/Turborepo monorepo with React frontend, Express API,
   WebSocket service, and shared Prisma/PostgreSQL package.
 - **Package manager:** Bun 1.3.14.
-- **Current product milestone:** Phase 11 collaboration features are implemented
-  in code and validated. Phase 10 and Phase 11 migrations are not yet applied
-  to a database; Phase 12 is next.
+- **Current product milestone:** Phases 1–12 are implemented in code and
+  validated. Phase 10, 11, and 12 migrations are not yet applied to a database;
+  Phase 13 quality and polish is next.
 - **Canonical docs:** [project flow and roadmap](./PROJECT_FLOW.md),
   [root setup](./README.md), and the four package guides linked below.
 
@@ -27,7 +27,16 @@ secret environment values into this file.
 - Board CRUD and board list navigation.
 - Section/list creation and card/issue CRUD.
 - Drag-and-drop issue moves between sections with optimistic state and
-  rollback on API failure.
+  rollback on API failure; cards can also be reordered within a section.
+- Issue section and ordering positions are persisted by the API and returned
+  in deterministic order.
+- Board WebSocket clients authenticate with the current JWT, join authorized
+  board rooms, and receive active collaborator presence.
+- Connected clients synchronize card, comment, list, and board rename/delete
+  changes by refreshing server state. Socket sends are notifications only;
+  REST authorization and persisted state remain authoritative.
+- Board connection status includes bounded automatic reconnect and a manual
+  retry action. API changes remain persisted while realtime is unavailable.
 - Local card/list state updates avoid refetching the whole board after simple
   mutations.
 - Sidebar workspace selection, navigation, collapse/expand, and Stackit
@@ -50,16 +59,16 @@ secret environment values into this file.
   soft-delete their comments. Activity records card creation, card metadata
   updates, moves, and comment create/edit/delete actions.
 
-### Existing foundations not fully productized
+### Remaining considerations
 
-- WebSocket server supports board room presence and event relay, but the
-  frontend is not fully integrated with board-level real-time updates.
 - Phase 10 migrations add board grants and `superadmin`; Phase 11 adds card
-  metadata and issue activity. All migrations are generated and validated but
-  not applied. The legacy migration promotes the oldest active admin
+  metadata and issue activity; Phase 12 adds issue ordering. All migrations
+  are present but not applied. The Prisma schema and generated client have
+  been validated. The legacy migration promotes the oldest active admin
   membership as superadmin because prior schema did not record workspace
   creators; existing members are intentionally not granted boards.
-- Card destination-section moves persist; order within a section does not.
+- Realtime notifications are best-effort. The API and database remain the
+  source of truth, and users can manually retry the WebSocket connection.
 
 ## Architecture and package guides
 
@@ -196,8 +205,9 @@ scope.
 2. Inspect `git status` and existing diffs before editing; preserve unrelated
    staged and unstaged work.
 3. Confirm which roadmap phase or bug is in scope from the latest user
-   request. Phase 11 is implemented; Phase 12 (real-time collaboration) is
-   next after reviewing and applying the pending Phase 10/11 migrations.
+   request. Phase 12 real-time collaboration is implemented; Phase 13 quality
+   and polish is next. Review pending migrations before applying them to a
+   target database.
 4. Trace a continuous feature across UI, API, authorization, WebSocket, and
    data model as applicable; preserve established patterns.
 5. Validate with the narrowest relevant type-check/build/tests and report

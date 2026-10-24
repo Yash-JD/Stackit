@@ -26,10 +26,11 @@ product's collaboration features are delivered.
    issues/cards. Admins and superadmins manage boards and lists. Members can
    create, edit, delete, and move cards on boards assigned to them. Cards have
    a `Design`, `Build`, or `Research` label and an optional date-only due date.
-5. **Move work.** A card can be dragged between sections. The UI moves it
-   optimistically and restores its original location if the API request
-   fails. The backend persists the destination section, but not ordering
-   within a section.
+5. **Move and order work.** A card can be dragged between sections or
+   reordered within a section. The UI updates optimistically and restores the
+   original order if the API request fails. The API persists each card's
+   section and position; connected board clients refresh from that
+   authoritative state after a move.
 6. **Manage workspace people.** Workspace admins invite an email address and
    choose its board access, update regular members' roles and board grants, or
    remove a member. The single superadmin is shown as protected and cannot be
@@ -61,9 +62,11 @@ Browser (React/Bun, :5173)
 
 The frontend centralizes API calls in `apps/frontend/src/api.ts`. The backend
 is the authority for validation, database changes, and access control.
-WebSocket notifications are authenticated and re-check relevant membership
-and invitation records before broadcasting. Both server processes share
-database models from `packages/db`.
+WebSocket notifications are authenticated and re-check relevant membership,
+board grants, and associated records before broadcasting. Board clients show
+live presence and reconnect status; realtime messages prompt recipients to
+reload authoritative API state rather than applying untrusted mutation
+payloads. Both server processes share database models from `packages/db`.
 
 ## Implemented product areas
 
@@ -73,7 +76,10 @@ database models from `packages/db`.
 - Board listing, creation, rename, and deletion.
 - Board section/list creation.
 - Card/issue create, edit, delete, and moves between sections.
-- Optimistic card movement with rollback after a failed request.
+- Persisted card ordering within each section, including optimistic
+  drag-and-drop reordering and rollback after a failed request.
+- Board-level live presence, reconnect/retry status, and same-board
+  synchronization for card, comment, list, and board rename/delete changes.
 - Local state updates for card and section changes to avoid unnecessary full
   board reloads.
 - Responsive workspace sidebar with board navigation, create-board controls,
@@ -96,20 +102,23 @@ frontend phase history and implementation concepts.
 
 ## Development roadmap
 
-Phases 1–11 are implemented in code. The Phase 10 and Phase 11 database
-migrations have been generated and validated but must still be applied to the
+Phases 1–12 are implemented in code. The Phase 10, Phase 11, and Phase 12
+database migrations are present; the Prisma schema and generated client have
+been validated, but migrations must still be reviewed and applied to the
 target database.
 Continue with the following phases, adjusting scope as real product decisions
 are made:
 
 ### Phase 12 — Real-time collaboration
 
-- Wire board clients to the existing WebSocket board rooms.
-- Synchronize board/card/list mutations for users viewing the same board.
-- Provide live presence and clear reconnect/error behavior.
-- Persist card ordering within sections and synchronize it consistently.
-- Validate socket permissions for every event; clients cannot authorize
-  themselves by message contents.
+- Complete: authenticated board-room clients, live presence, bounded
+  reconnects, visible connection state, and manual retry.
+- Complete: same-board clients synchronize card, comment, list, and board
+  rename/delete changes by refreshing API state.
+- Complete: persist and synchronize card ordering within sections.
+- Complete: validate current socket permissions and relevant database records;
+  client messages do not authorize or supply authoritative mutation data.
+- The ordering migration is generated but has not been applied to a database.
 
 ### Phase 13 — Quality and polish
 
@@ -130,19 +139,22 @@ are made:
 
 ## Known limitations and decisions to revisit
 
-- The Phase 10 and 11 migrations are not applied automatically by schema
+- The Phase 10, 11, and 12 migrations are not applied automatically by schema
   generation. Apply the reviewed migrations before using the new roles, board
-  grants, card metadata, or activity API against an existing database.
+  grants, card metadata, activity API, or persisted ordering against an
+  existing database.
 - The legacy migration promotes the oldest active `admin` membership in each
   workspace to `superadmin`, because the old schema did not record a workspace
   creator. It intentionally does not assign boards to existing members.
 - Phase 11 uses a fixed set of single-select labels and date-only due dates.
   There are no card assignments, custom labels, or new notification delivery;
   notifications remain part of future real-time product decisions.
-- Card moves persist a destination section, not within-section ordering.
-- WebSocket board-room events exist on the server, but the browser is not
-  fully wired for board real-time updates. The People dialog does use sockets
-  for failed invitation email notices.
+- Board and card mutations remain available through the API while WebSocket
+  clients reconnect; connected peers may need a refresh if a notification
+  could not be delivered.
+- Phase 12 ordering migration is not applied. Generate/validate the Prisma
+  client as needed, then review and apply migrations only against the intended
+  database.
 - The repository currently has no dedicated automated test suite or CI
   workflow documented here; add regression coverage for permissions,
   collaboration, invitation failures, and optimistic updates as part of the
