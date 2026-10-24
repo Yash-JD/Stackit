@@ -10,7 +10,7 @@ import { COMMON_ERRORS, SECTION_ERRORS, ISSUE_ERRORS } from "../helper/errors";
 const router = express.Router();
 
 router.post(
-  "/api/v1/issue/:sectionId",
+  ["/api/v1/issue/:sectionId", "/api/v1/section/:sectionId/issues"],
   authMiddleware,
   async (req: Request, res: Response) => {
     const userId = req.id;
@@ -93,7 +93,7 @@ router.post(
 );
 
 router.get(
-  "/api/v1/issue/detail/:issueId",
+  ["/api/v1/issue/detail/:issueId", "/api/v1/issue/:issueId/detail"],
   authMiddleware,
   async (req: Request, res: Response) => {
     const userId = req.id;
@@ -133,7 +133,7 @@ router.get(
 );
 
 router.get(
-  "/api/v1/issue/:paramId",
+  ["/api/v1/issue/:paramId", "/api/v1/section/:paramId/issues"],
   authMiddleware,
   async (req: Request, res: Response) => {
     const userId = req.id;
@@ -206,7 +206,7 @@ router.get(
 );
 
 router.put(
-  "/api/v1/issue/:issueId",
+  ["/api/v1/issue/:issueId", "/api/v1/issue/:issueId/update"],
   authMiddleware,
   async (req: Request, res: Response) => {
     const userId = req.id;
@@ -304,7 +304,7 @@ router.put(
 );
 
 router.delete(
-  "/api/v1/issue/:issueId",
+  ["/api/v1/issue/:issueId", "/api/v1/issue/:issueId/delete"],
   authMiddleware,
   async (req: Request, res: Response) => {
     const userId = req.id;
@@ -349,7 +349,10 @@ router.delete(
 );
 
 router.put(
-  "/api/v1/issue/move/:issueId/:sectionId",
+  [
+    "/api/v1/issue/move/:issueId/:sectionId",
+    "/api/v1/issue/:issueId/move/:sectionId",
+  ],
   authMiddleware,
   async (req: Request, res: Response) => {
     const userId = req.id;

@@ -52,7 +52,7 @@ router.post(
 
 // Update organization route
 router.put(
-  "/api/v1/organization/:orgId",
+  ["/api/v1/organization/:orgId", "/api/v1/organization/:orgId/update"],
   authMiddleware,
   async (req: Request, res: Response) => {
     const { success, data } = updateOrgSchema.safeParse(req.body);
@@ -128,7 +128,7 @@ router.get(
 
 // Get a specific organization for a user
 router.get(
-  "/api/v1/organization/:orgId",
+  ["/api/v1/organization/:orgId", "/api/v1/organization/:orgId/detail"],
   authMiddleware,
   async (req: Request, res: Response) => {
     const orgId = req.params.orgId as string;
@@ -161,7 +161,7 @@ router.get(
 
 // Delete an organization
 router.delete(
-  "/api/v1/organization/:orgId",
+  ["/api/v1/organization/:orgId", "/api/v1/organization/:orgId/delete"],
   authMiddleware,
   async (req: Request, res: Response) => {
     const orgId = req.params.orgId as string;

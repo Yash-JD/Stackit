@@ -96,7 +96,7 @@ router.post(
 );
 
 router.delete(
-  "/api/v1/boards/:boardId",
+  ["/api/v1/boards/:boardId", "/api/v1/boards/:boardId/delete"],
   authMiddleware,
   async (req: Request, res: Response) => {
     const boardId = req.params.boardId as string;
@@ -146,7 +146,11 @@ router.delete(
 );
 
 router.put(
-  "/api/v1/boards/:boardId",
+  [
+    "/api/v1/boards/:boardId",
+    "/api/v1/boards/:boardId/rename",
+    "/api/v1/boards/:boardId/update",
+  ],
   authMiddleware,
   async (req: Request, res: Response) => {
     const boardId = req.params.boardId as string;

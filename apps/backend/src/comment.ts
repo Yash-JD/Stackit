@@ -9,7 +9,7 @@ import { COMMON_ERRORS, COMMENT_ERRORS } from "../helper/errors";
 const router = express.Router();
 
 router.post(
-  "/api/v1/comment/:issueId",
+  ["/api/v1/comment/:issueId", "/api/v1/issue/:issueId/comments"],
   authMiddleware,
   async (req: Request, res: Response) => {
     const { success, data } = CommentsSchema.safeParse(req.body);
@@ -68,7 +68,7 @@ router.post(
 );
 
 router.put(
-  "/api/v1/comment/:commentId",
+  ["/api/v1/comment/:commentId", "/api/v1/comment/:commentId/update"],
   authMiddleware,
   async (req: Request, res: Response) => {
     const { success, data } = CommentsSchema.safeParse(req.body);
@@ -135,7 +135,7 @@ router.put(
 );
 
 router.get(
-  "/api/v1/comment/:issueId",
+  ["/api/v1/comment/:issueId", "/api/v1/issue/:issueId/comments"],
   authMiddleware,
   async (req: Request, res: Response) => {
     const userId = req.id;
@@ -181,7 +181,7 @@ router.get(
 );
 
 router.delete(
-  "/api/v1/comment/:commentId",
+  ["/api/v1/comment/:commentId", "/api/v1/comment/:commentId/delete"],
   authMiddleware,
   async (req: Request, res: Response) => {
     const userId = req.id;

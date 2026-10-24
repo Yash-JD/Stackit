@@ -6,7 +6,7 @@ import { hasBoardAccess } from "../helper/hasRole";
 const router = express.Router();
 
 router.get(
-  "/api/v1/activity/:issueId",
+  ["/api/v1/activity/:issueId", "/api/v1/issue/:issueId/activity"],
   authMiddleware,
   async (req: Request, res: Response) => {
     const issueId = req.params.issueId as string;

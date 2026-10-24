@@ -62,7 +62,11 @@ router.post(
 );
 
 router.put(
-  "/api/v1/section/:sectionId",
+  [
+    "/api/v1/section/:sectionId",
+    "/api/v1/section/:sectionId/rename",
+    "/api/v1/section/:sectionId/update",
+  ],
   authMiddleware,
   async (req: Request, res: Response) => {
     const { success, data } = SectionUpdateSchema.safeParse(req.body);
@@ -178,7 +182,7 @@ router.get(
 );
 
 router.delete(
-  "/api/v1/section/:sectionId",
+  ["/api/v1/section/:sectionId", "/api/v1/section/:sectionId/delete"],
   authMiddleware,
   async (req: Request, res: Response) => {
     const userId = req.id;

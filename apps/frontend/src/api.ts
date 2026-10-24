@@ -323,7 +323,7 @@ export async function getOrganizations() {
 export async function getOrganizationMembers(orgId: string) {
   const response = await apiRequest<{
     membership: OrganizationMember[];
-  }>(`/api/v1/membership/${encodeURIComponent(orgId)}`, {
+  }>(`/api/v1/organization/${encodeURIComponent(orgId)}/members`, {
     authenticated: true,
   });
   const members = response.data?.membership;
@@ -341,7 +341,7 @@ export async function getOrganizationMembers(orgId: string) {
 export async function getOrganizationInvitations(orgId: string) {
   const response = await apiRequest<{
     invitations: OrganizationInvitation[];
-  }>(`/api/v1/invitation/organization/${encodeURIComponent(orgId)}`, {
+  }>(`/api/v1/organization/${encodeURIComponent(orgId)}/invitations`, {
     authenticated: true,
   });
   const invitations = response.data?.invitations;
@@ -392,14 +392,14 @@ export async function inviteOrganizationMember(
 }
 
 export async function acceptInvitation(invitationId: string) {
-  await apiRequest(`/api/v1/accept/${encodeURIComponent(invitationId)}`, {
+  await apiRequest(`/api/v1/invitation/${encodeURIComponent(invitationId)}/accept`, {
     method: "POST",
     authenticated: true,
   });
 }
 
 export async function rejectInvitation(invitationId: string) {
-  await apiRequest(`/api/v1/reject/${encodeURIComponent(invitationId)}`, {
+  await apiRequest(`/api/v1/invitation/${encodeURIComponent(invitationId)}/reject`, {
     method: "POST",
     authenticated: true,
   });
@@ -407,7 +407,7 @@ export async function rejectInvitation(invitationId: string) {
 
 export async function removeOrganizationMember(userId: string, orgId: string) {
   await apiRequest(
-    `/api/v1/membership/${encodeURIComponent(userId)}/${encodeURIComponent(orgId)}`,
+    `/api/v1/membership/${encodeURIComponent(userId)}/${encodeURIComponent(orgId)}/remove`,
     { method: "DELETE", authenticated: true },
   );
 }
@@ -468,7 +468,7 @@ export async function updateOrganization(
   description: string,
 ) {
   const response = await apiRequest<Organization>(
-    `/api/v1/organization/${encodeURIComponent(organizationId)}`,
+    `/api/v1/organization/${encodeURIComponent(organizationId)}/update`,
     {
       method: "PUT",
       authenticated: true,
@@ -485,7 +485,7 @@ export async function updateOrganization(
 
 export async function deleteOrganization(organizationId: string) {
   await apiRequest(
-    `/api/v1/organization/${encodeURIComponent(organizationId)}`,
+    `/api/v1/organization/${encodeURIComponent(organizationId)}/delete`,
     {
       method: "DELETE",
       authenticated: true,
@@ -522,7 +522,7 @@ export async function createBoard(orgId: string, title: string) {
 }
 
 export async function renameBoard(boardId: string, title: string) {
-  const response = await apiRequest<BoardSummary>(`/api/v1/boards/${boardId}`, {
+  const response = await apiRequest<BoardSummary>(`/api/v1/boards/${encodeURIComponent(boardId)}/rename`, {
     method: "PUT",
     authenticated: true,
     body: JSON.stringify({ title }),
@@ -536,7 +536,7 @@ export async function renameBoard(boardId: string, title: string) {
 }
 
 export async function deleteBoard(boardId: string) {
-  await apiRequest(`/api/v1/boards/${boardId}`, {
+  await apiRequest(`/api/v1/boards/${encodeURIComponent(boardId)}/delete`, {
     method: "DELETE",
     authenticated: true,
   });
@@ -578,7 +578,7 @@ export async function createSection(boardId: string, title: string) {
 
 export async function getIssuesForSection(sectionId: string) {
   const response = await apiRequest<IssueSummary[]>(
-    `/api/v1/issue/${encodeURIComponent(sectionId)}`,
+    `/api/v1/section/${encodeURIComponent(sectionId)}/issues`,
     { authenticated: true },
   );
   const issues = response.data;
@@ -598,7 +598,7 @@ export async function createIssue(
   dueDate: string | null,
 ) {
   const response = await apiRequest<IssueSummary>(
-    `/api/v1/issue/${sectionId}`,
+    `/api/v1/section/${encodeURIComponent(sectionId)}/issues`,
     {
       method: "POST",
       authenticated: true,
@@ -620,7 +620,7 @@ export async function updateIssue(
   label: IssueSummary["label"],
   dueDate: string | null,
 ) {
-  const response = await apiRequest<IssueSummary>(`/api/v1/issue/${issueId}`, {
+  const response = await apiRequest<IssueSummary>(`/api/v1/issue/${encodeURIComponent(issueId)}/update`, {
     method: "PUT",
     authenticated: true,
     body: JSON.stringify({ title, description, label, dueDate }),
@@ -634,7 +634,7 @@ export async function updateIssue(
 }
 
 export async function deleteIssue(issueId: string) {
-  await apiRequest(`/api/v1/issue/${issueId}`, {
+  await apiRequest(`/api/v1/issue/${encodeURIComponent(issueId)}/delete`, {
     method: "DELETE",
     authenticated: true,
   });
@@ -654,7 +654,7 @@ export type CardDetailResponse = IssueSummary & {
 
 export async function getIssue(issueId: string): Promise<CardDetailResponse> {
   const response = await apiRequest<CardDetailResponse>(
-    `/api/v1/issue/detail/${encodeURIComponent(issueId)}`,
+    `/api/v1/issue/${encodeURIComponent(issueId)}/detail`,
     { authenticated: true },
   );
   if (!response.data) {
@@ -686,7 +686,7 @@ export async function moveIssue(
 
 export async function getIssueComments(issueId: string) {
   const response = await apiRequest<IssueComment[]>(
-    `/api/v1/comment/${encodeURIComponent(issueId)}`,
+    `/api/v1/issue/${encodeURIComponent(issueId)}/comments`,
     { authenticated: true },
   );
   if (!Array.isArray(response.data)) {
@@ -697,7 +697,7 @@ export async function getIssueComments(issueId: string) {
 
 export async function createIssueComment(issueId: string, comment: string) {
   const response = await apiRequest<IssueComment>(
-    `/api/v1/comment/${encodeURIComponent(issueId)}`,
+    `/api/v1/issue/${encodeURIComponent(issueId)}/comments`,
     {
       method: "POST",
       authenticated: true,
@@ -709,7 +709,7 @@ export async function createIssueComment(issueId: string, comment: string) {
 }
 
 export async function updateIssueComment(commentId: string, comment: string) {
-  await apiRequest(`/api/v1/comment/${encodeURIComponent(commentId)}`, {
+  await apiRequest(`/api/v1/comment/${encodeURIComponent(commentId)}/update`, {
     method: "PUT",
     authenticated: true,
     body: JSON.stringify({ comment }),
@@ -717,7 +717,7 @@ export async function updateIssueComment(commentId: string, comment: string) {
 }
 
 export async function deleteIssueComment(commentId: string) {
-  await apiRequest(`/api/v1/comment/${encodeURIComponent(commentId)}`, {
+  await apiRequest(`/api/v1/comment/${encodeURIComponent(commentId)}/delete`, {
     method: "DELETE",
     authenticated: true,
   });
@@ -725,7 +725,7 @@ export async function deleteIssueComment(commentId: string) {
 
 export async function getIssueActivity(issueId: string) {
   const response = await apiRequest<{ activities: IssueActivity[] }>(
-    `/api/v1/activity/${encodeURIComponent(issueId)}`,
+    `/api/v1/issue/${encodeURIComponent(issueId)}/activity`,
     { authenticated: true },
   );
   if (!Array.isArray(response.data?.activities)) {

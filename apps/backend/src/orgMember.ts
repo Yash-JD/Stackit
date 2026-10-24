@@ -181,7 +181,10 @@ router.get(
 );
 
 router.get(
-  "/api/v1/invitation/organization/:orgId",
+  [
+    "/api/v1/invitation/organization/:orgId",
+    "/api/v1/organization/:orgId/invitations",
+  ],
   authMiddleware,
   async (req: Request, res: Response) => {
     const orgId = req.params.orgId as string;
@@ -218,7 +221,7 @@ router.get(
 );
 
 router.post(
-  "/api/v1/accept/:inviteId",
+  ["/api/v1/accept/:inviteId", "/api/v1/invitation/:inviteId/accept"],
   authMiddleware,
   async (req: Request, res: Response) => {
     const userId = req.id;
@@ -330,7 +333,7 @@ router.post(
 );
 
 router.post(
-  "/api/v1/reject/:inviteId",
+  ["/api/v1/reject/:inviteId", "/api/v1/invitation/:inviteId/reject"],
   authMiddleware,
   async (req: Request, res: Response) => {
     const invitation = await prisma.invitation.findUnique({
@@ -379,7 +382,7 @@ router.post(
 );
 
 router.get(
-  "/api/v1/membership/:orgId",
+  ["/api/v1/membership/:orgId", "/api/v1/organization/:orgId/members"],
   authMiddleware,
   async (req: Request, res: Response) => {
     const adminId = req.id;
@@ -609,7 +612,10 @@ router.put(
 );
 
 router.delete(
-  "/api/v1/membership/:userId/:orgId",
+  [
+    "/api/v1/membership/:userId/:orgId",
+    "/api/v1/membership/:userId/:orgId/remove",
+  ],
   authMiddleware,
   async (req: Request, res: Response) => {
     const adminId = req.id;
