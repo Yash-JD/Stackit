@@ -26,8 +26,8 @@ board grants, boards, sections, issues, and comments. Important relationships:
 - Invitations associate a member with selected boards through
   `InvitationBoard`; accepting activates those grants.
 - A workspace owns boards; boards contain sections and issues.
-- Issues store a label and optional date-only due date, and can have comments
-  authored by users.
+- Issues store a label, optional date-only due date, and persisted position
+  within a section; they can have comments authored by users.
 - `IssueActivity` records issue creation, metadata edits, list moves, and
   comment changes with an optional actor and timestamp. Deleting an issue
   cascades its comments and activity; deleting an actor preserves activity
@@ -79,10 +79,11 @@ migrations to represent new schema changes; add a new migration instead.
 Production deployments should apply reviewed migrations with a deployment
 workflow rather than running `migrate dev`.
 
-The Phase 10 migrations add the superadmin role and board-grant tables, and
-the Phase 11 migration adds card metadata and activity history. These
-migrations have been generated and validated, but not applied by this
-implementation.
+The Phase 10 migrations add the superadmin role and board-grant tables, the
+Phase 11 migration adds card metadata and activity history, and the Phase 12
+migration adds/backfills issue positions and a section-order index. These
+migrations are present but not applied by this implementation. The current
+Prisma schema and generated client have been validated.
 The legacy migration promotes the oldest active admin in each existing
 workspace because workspace creator identity was not recorded in the old
 schema. Existing regular members are intentionally not granted boards; assign

@@ -135,6 +135,7 @@ model Issue {
   description String
   label       String          @default("Build")
   dueDate     DateTime?       @db.Date
+  position    Int             @default(0)
   boardId     String
   board       Boards          @relation(fields: [boardId], references: [id], onDelete: Cascade)
   sectionId   String
@@ -144,6 +145,8 @@ model Issue {
   updatedAt   DateTime        @default(now()) @updatedAt
   comments    Comments[]
   activities  IssueActivity[]
+
+  @@index([sectionId, position])
 }
 
 model Comments {
