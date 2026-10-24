@@ -393,7 +393,7 @@ button {
   box-shadow: 0 28px 90px rgba(0, 0, 0, 0.32);
 }
 .members-dialog {
-  width: min(680px, 100%);
+  width: min(760px, 100%);
   max-height: min(88vh, 850px);
   overflow-y: auto;
 }
@@ -429,6 +429,30 @@ button {
   color: #edf7f3;
   background: rgba(255, 255, 255, 0.045);
   font-size: 12px;
+}
+.board-access-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin: 0;
+  padding: 9px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+.board-access-options legend {
+  padding: 0 4px;
+  color: #a5b7b3;
+  font-size: 11px;
+}
+.board-access-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #dce8e5;
+  font-size: 11px;
+}
+.board-access-options input {
+  accent-color: #72c4ac;
 }
 .member-list {
   display: grid;
@@ -476,6 +500,20 @@ button {
   background: rgba(255, 255, 255, 0.06);
   font-size: 10px;
   text-transform: capitalize;
+}
+.member-role-select {
+  padding: 5px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #dce8e5;
+  background: #243438;
+  font-size: 11px;
+}
+.member-board-access {
+  display: grid;
+  flex: 1 0 100%;
+  gap: 8px;
+  padding-left: 40px;
 }
 .member-confirm-actions {
   display: flex;

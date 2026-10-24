@@ -151,9 +151,26 @@ export function Sidebar({
       window.removeEventListener("stackit:boards-changed", refreshBoards);
   }, []);
 
+  useEffect(() => {
+    const refreshOrganizations = () =>
+      setOrganizationsRetry((retry) => retry + 1);
+    window.addEventListener(
+      "stackit:organizations-changed",
+      refreshOrganizations,
+    );
+    return () =>
+      window.removeEventListener(
+        "stackit:organizations-changed",
+        refreshOrganizations,
+      );
+  }, []);
+
   const selectedOrganization = organizations.find(
     (organization) => organization.id === selectedOrgId,
   );
+  const canManageWorkspace =
+    selectedOrganization?.membershipRole === "superadmin" ||
+    selectedOrganization?.membershipRole === "admin";
 
   const handleCreateBoard = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -243,7 +260,10 @@ export function Sidebar({
       setOrganizations((current) =>
         current.map((organization) =>
           organization.id === updatedOrganization.id
-            ? updatedOrganization
+            ? {
+                ...updatedOrganization,
+                membershipRole: organization.membershipRole,
+              }
             : organization,
         ),
       );
@@ -386,7 +406,7 @@ export function Sidebar({
           className="nav-item"
           type="button"
           onClick={openOrganizationSettings}
-          disabled={!selectedOrganization}
+          disabled={!canManageWorkspace}
           aria-label="Settings"
           title={isCollapsed ? "Settings" : undefined}
         >
@@ -441,7 +461,8 @@ export function Sidebar({
             </Link>
           ))
         )}
-        {!isLoadingOrganizations &&
+        {canManageWorkspace &&
+          !isLoadingOrganizations &&
           !isLoadingBoards &&
           !organizationsError &&
           !boardsError &&
@@ -465,10 +486,12 @@ export function Sidebar({
         <OrganizationMembersDialog
           organizationId={selectedOrganization.id}
           organizationName={selectedOrganization.name}
+          canManage={canManageWorkspace}
+          boards={boards}
           onClose={() => setShowMembersDialog(false)}
         />
       )}
-      {showCreateBoard && (
+      {showCreateBoard && canManageWorkspace && (
         <div
           className="modal-backdrop sidebar-modal-backdrop"
           onClick={() => !isCreatingBoard && setShowCreateBoard(false)}

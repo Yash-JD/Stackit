@@ -70,6 +70,12 @@ bun run start
 - The People dialog uses the authenticated WebSocket service for live failed
   invitation delivery notices; it also reads persisted invitation status from
   the API.
+- The People dialog exposes role and board assignment controls only to admins
+  and superadmins. Invitations include selected boards; regular members can
+  view and respond to invitations addressed to them.
+- Members see only assigned boards and can manage cards there. Board and list
+  management controls are hidden for members. The superadmin is displayed as
+  protected with no removal or demotion action.
 - WebSocket configuration and behavior are described in the
   [WebSocket guide](../websocket/README.md).
 

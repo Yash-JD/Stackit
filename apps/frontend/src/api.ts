@@ -13,6 +13,7 @@ export type Organization = {
   name: string;
   description: string;
   isDeleted: boolean;
+  membershipRole?: "superadmin" | "admin" | "member";
 };
 
 export type BoardSummary = {
@@ -40,23 +41,27 @@ export type IssueSummary = {
 export type OrganizationMember = {
   userId: string;
   orgId: string;
-  role: "admin" | "member";
+  role: "superadmin" | "admin" | "member";
   user: {
     id: string;
     email: string;
     profilePhoto: string | null;
   };
+  boardMemberships: Array<{
+    board: { id: string; title: string };
+  }>;
 };
 
 export type OrganizationInvitation = {
   id: string;
   email: string;
   orgId: string;
-  role: "admin" | "member";
+  role: "member";
   status: "PENDING" | "ACCEPTED" | "REJECTED" | "FAILED";
   createdAt: string;
   org?: { id: string; name: string };
   inviter?: { email: string };
+  boards?: Array<{ board: { id: string; title: string } }>;
 };
 
 type ApiRequestOptions = RequestInit & {
@@ -156,7 +161,10 @@ export function signin(data: { email: string; password: string }) {
 
 export async function getOrganizations() {
   const response = await apiRequest<{
-    membership: Array<{ organization: Organization }>;
+    membership: Array<{
+      organization: Organization;
+      role: Organization["membershipRole"];
+    }>;
   }>("/api/v1/organization", { authenticated: true });
   const memberships = response.data?.membership;
 
@@ -165,7 +173,10 @@ export async function getOrganizations() {
   }
 
   return memberships
-    .map((membership) => membership.organization)
+    .map((membership) => ({
+      ...membership.organization,
+      membershipRole: membership.role,
+    }))
     .filter((organization) => organization && !organization.isDeleted);
 }
 
@@ -181,7 +192,10 @@ export async function getOrganizationMembers(orgId: string) {
     throw new Error("The server returned an invalid members response");
   }
 
-  return members;
+  return members.map((member) => ({
+    ...member,
+    boardMemberships: member.boardMemberships ?? [],
+  }));
 }
 
 export async function getOrganizationInvitations(orgId: string) {
@@ -212,14 +226,18 @@ export async function getPendingInvitations() {
   return invitations;
 }
 
-export async function inviteOrganizationMember(orgId: string, email: string) {
+export async function inviteOrganizationMember(
+  orgId: string,
+  email: string,
+  boardIds: string[],
+) {
   const response = await apiRequest<{
     invitationId: string;
     emailSent: boolean;
   }>("/api/v1/invite", {
     method: "POST",
     authenticated: true,
-    body: JSON.stringify({ orgId, email }),
+    body: JSON.stringify({ orgId, email, boardIds }),
   });
 
   if (
@@ -254,6 +272,36 @@ export async function removeOrganizationMember(userId: string, orgId: string) {
   );
 }
 
+export async function updateOrganizationMemberRole(
+  userId: string,
+  orgId: string,
+  role: "admin" | "member",
+) {
+  await apiRequest(
+    `/api/v1/membership/${encodeURIComponent(userId)}/${encodeURIComponent(orgId)}/role`,
+    {
+      method: "PUT",
+      authenticated: true,
+      body: JSON.stringify({ role }),
+    },
+  );
+}
+
+export async function updateOrganizationMemberBoards(
+  userId: string,
+  orgId: string,
+  boardIds: string[],
+) {
+  await apiRequest(
+    `/api/v1/membership/${encodeURIComponent(userId)}/${encodeURIComponent(orgId)}/boards`,
+    {
+      method: "PUT",
+      authenticated: true,
+      body: JSON.stringify({ boardIds }),
+    },
+  );
+}
+
 export async function createOrganization(
   name: string,
   description = "Workspace for our team",
@@ -271,7 +319,7 @@ export async function createOrganization(
     throw new Error("The server did not create the organization");
   }
 
-  return response.data;
+  return { ...response.data, membershipRole: "superadmin" as const };
 }
 
 export async function updateOrganization(

@@ -19,6 +19,7 @@ export function useBoard(boardId: string | undefined) {
   const [columns, setColumns] = useState<BoardColumn[]>([]);
   const [title, setTitle] = useState("Board");
   const [organizationId, setOrganizationId] = useState("");
+  const [canManageBoard, setCanManageBoard] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [pendingMoveIds, setPendingMoveIds] = useState<string[]>([]);
@@ -31,6 +32,7 @@ export function useBoard(boardId: string | undefined) {
       setColumns([]);
       setTitle("Board");
       setOrganizationId("");
+      setCanManageBoard(false);
       setError("This board could not be found.");
       setIsLoading(false);
       return;
@@ -74,6 +76,7 @@ export function useBoard(boardId: string | undefined) {
         if (requestSequence.current !== requestId) return;
         setTitle(board.title);
         setOrganizationId(board.orgId);
+        setCanManageBoard(organization.membershipRole !== "member");
         setColumns(nextColumns);
         return;
       }
@@ -82,12 +85,14 @@ export function useBoard(boardId: string | undefined) {
       setColumns([]);
       setTitle("Board");
       setOrganizationId("");
+      setCanManageBoard(false);
       setError("This board could not be found.");
     } catch (loadError) {
       if (requestSequence.current !== requestId) return;
       setColumns([]);
       setTitle("Board");
       setOrganizationId("");
+      setCanManageBoard(false);
       setError(
         loadError instanceof Error
           ? loadError.message
@@ -103,6 +108,16 @@ export function useBoard(boardId: string | undefined) {
     return () => {
       requestSequence.current += 1;
     };
+  }, [refresh]);
+
+  useEffect(() => {
+    const refreshAccess = () => void refresh();
+    window.addEventListener("stackit:organizations-changed", refreshAccess);
+    return () =>
+      window.removeEventListener(
+        "stackit:organizations-changed",
+        refreshAccess,
+      );
   }, [refresh]);
 
   const rename = useCallback(
@@ -278,6 +293,7 @@ export function useBoard(boardId: string | undefined) {
     columns,
     title,
     organizationId,
+    canManageBoard,
     isLoading,
     error,
     pendingMoveIds,

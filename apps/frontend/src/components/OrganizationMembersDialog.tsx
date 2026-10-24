@@ -14,13 +14,18 @@ import {
   inviteOrganizationMember,
   rejectInvitation,
   removeOrganizationMember,
+  updateOrganizationMemberBoards,
+  updateOrganizationMemberRole,
   type OrganizationInvitation,
   type OrganizationMember,
+  type BoardSummary,
 } from "../api";
 
 type OrganizationMembersDialogProps = {
   organizationId: string;
   organizationName: string;
+  canManage: boolean;
+  boards: BoardSummary[];
   onClose: () => void;
 };
 
@@ -30,6 +35,8 @@ const WEBSOCKET_URL =
 export function OrganizationMembersDialog({
   organizationId,
   organizationName,
+  canManage,
+  boards,
   onClose,
 }: OrganizationMembersDialogProps) {
   const [members, setMembers] = useState<OrganizationMember[]>([]);
@@ -48,6 +55,10 @@ export function OrganizationMembersDialog({
   const [actionError, setActionError] = useState("");
   const [activeActionId, setActiveActionId] = useState("");
   const [memberToRemove, setMemberToRemove] = useState<string | null>(null);
+  const [selectedBoardIds, setSelectedBoardIds] = useState<string[]>([]);
+  const [boardSelections, setBoardSelections] = useState<
+    Record<string, string[]>
+  >({});
   const [socketNotice, setSocketNotice] = useState("");
   const socketRef = useRef<WebSocket | null>(null);
   const joinedOrganizationRef = useRef(false);
@@ -58,8 +69,12 @@ export function OrganizationMembersDialog({
     setLoadErrors([]);
     const [membersResult, organizationInvitationsResult, pendingResult] =
       await Promise.allSettled([
-        getOrganizationMembers(organizationId),
-        getOrganizationInvitations(organizationId),
+        canManage
+          ? getOrganizationMembers(organizationId)
+          : Promise.resolve([]),
+        canManage
+          ? getOrganizationInvitations(organizationId)
+          : Promise.resolve([]),
         getPendingInvitations(),
       ]);
 
@@ -89,13 +104,25 @@ export function OrganizationMembersDialog({
 
     setLoadErrors(errors);
     setIsLoading(false);
-  }, [organizationId]);
+  }, [canManage, organizationId]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
   useEffect(() => {
+    setBoardSelections(
+      Object.fromEntries(
+        members.map((member) => [
+          member.userId,
+          member.boardMemberships.map((grant) => grant.board.id),
+        ]),
+      ),
+    );
+  }, [members]);
+
+  useEffect(() => {
+    if (!canManage) return;
     const token = localStorage.getItem(AUTH_TOKEN_KEY);
     if (!token) return;
 
@@ -178,12 +205,12 @@ export function OrganizationMembersDialog({
       if (socketRef.current === socket) socketRef.current = null;
       socket.close();
     };
-  }, [organizationId, refresh]);
+  }, [canManage, organizationId, refresh]);
 
   const handleInvite = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const inviteEmail = email.trim().toLowerCase();
-    if (!inviteEmail) return;
+    if (!inviteEmail || selectedBoardIds.length === 0) return;
 
     setInviteError("");
     setSuccessMessage("");
@@ -192,8 +219,10 @@ export function OrganizationMembersDialog({
       const invitation = await inviteOrganizationMember(
         organizationId,
         inviteEmail,
+        selectedBoardIds,
       );
       setEmail("");
+      setSelectedBoardIds([]);
       if (invitation.emailSent) {
         setSuccessMessage(`Invitation sent to ${inviteEmail}.`);
       } else {
@@ -217,6 +246,41 @@ export function OrganizationMembersDialog({
       setInviteError(errorMessage(error));
     } finally {
       setIsInviting(false);
+    }
+  };
+
+  const handleRoleChange = async (
+    member: OrganizationMember,
+    role: "admin" | "member",
+  ) => {
+    setActionError("");
+    setActiveActionId(member.userId);
+    try {
+      await updateOrganizationMemberRole(member.userId, organizationId, role);
+      window.dispatchEvent(new Event("stackit:organizations-changed"));
+      window.dispatchEvent(new Event("stackit:boards-changed"));
+      await refresh();
+    } catch (error) {
+      setActionError(errorMessage(error));
+    } finally {
+      setActiveActionId("");
+    }
+  };
+
+  const handleBoardSelectionSave = async (member: OrganizationMember) => {
+    setActionError("");
+    setActiveActionId(member.userId);
+    try {
+      await updateOrganizationMemberBoards(
+        member.userId,
+        organizationId,
+        boardSelections[member.userId] ?? [],
+      );
+      await refresh();
+    } catch (error) {
+      setActionError(errorMessage(error));
+    } finally {
+      setActiveActionId("");
     }
   };
 
@@ -247,6 +311,8 @@ export function OrganizationMembersDialog({
     try {
       await removeOrganizationMember(member.userId, organizationId);
       setMemberToRemove(null);
+      window.dispatchEvent(new Event("stackit:organizations-changed"));
+      window.dispatchEvent(new Event("stackit:boards-changed"));
       await refresh();
     } catch (error) {
       setActionError(errorMessage(error));
@@ -295,112 +361,218 @@ export function OrganizationMembersDialog({
           </p>
         )}
 
-        <section className="members-section">
-          <h4>Invite to workspace</h4>
-          <form className="member-invite-form" onSubmit={handleInvite}>
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="name@example.com"
-              aria-label="Email address to invite"
-              required
-            />
-            <button
-              type="submit"
-              className="primary-button"
-              disabled={isInviting || !email.trim()}
-            >
-              {isInviting ? "Sending..." : "Invite"}
-            </button>
-          </form>
-          {inviteError && (
-            <p className="form-error" role="alert">
-              {inviteError}
-            </p>
-          )}
-          {successMessage && (
-            <p className="member-success" role="status">
-              {successMessage}
-            </p>
-          )}
-        </section>
+        {canManage && (
+          <>
+            <section className="members-section">
+              <h4>Invite to workspace</h4>
+              <form className="member-invite-form" onSubmit={handleInvite}>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="name@example.com"
+                  aria-label="Email address to invite"
+                  required
+                />
+                <button
+                  type="submit"
+                  className="primary-button"
+                  disabled={
+                    isInviting || !email.trim() || selectedBoardIds.length === 0
+                  }
+                >
+                  {isInviting ? "Sending..." : "Invite"}
+                </button>
+              </form>
+              <fieldset className="board-access-options">
+                <legend>Boards this member can access</legend>
+                {boards.length === 0 ? (
+                  <p className="members-empty">
+                    Create a board before inviting a member.
+                  </p>
+                ) : (
+                  boards.map((board) => (
+                    <label key={board.id}>
+                      <input
+                        type="checkbox"
+                        checked={selectedBoardIds.includes(board.id)}
+                        onChange={(event) =>
+                          setSelectedBoardIds((current) =>
+                            event.target.checked
+                              ? [...current, board.id]
+                              : current.filter((id) => id !== board.id),
+                          )
+                        }
+                      />
+                      {board.title}
+                    </label>
+                  ))
+                )}
+              </fieldset>
+              {inviteError && (
+                <p className="form-error" role="alert">
+                  {inviteError}
+                </p>
+              )}
+              {successMessage && (
+                <p className="member-success" role="status">
+                  {successMessage}
+                </p>
+              )}
+            </section>
 
-        <section className="members-section">
-          <h4>Workspace members {!isLoading && `(${members.length})`}</h4>
-          {isLoading ? (
-            <p className="members-empty" role="status">
-              Loading members...
-            </p>
-          ) : members.length === 0 ? (
-            <p className="members-empty">No members to show.</p>
-          ) : (
-            <ul className="member-list">
-              {members.map((member) => (
-                <li className="member-row" key={member.userId}>
-                  <span className="member-avatar">
-                    {member.user.email.charAt(0).toUpperCase()}
-                  </span>
-                  <span className="member-email">{member.user.email}</span>
-                  <span className="member-role">{member.role}</span>
-                  {memberToRemove === member.userId ? (
-                    <span className="member-confirm-actions">
-                      <button
-                        type="button"
-                        className="text-button"
-                        onClick={() => setMemberToRemove(null)}
-                        disabled={activeActionId === member.userId}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        className="text-button danger-text"
-                        onClick={() => void handleRemoveMember(member)}
-                        disabled={activeActionId === member.userId}
-                      >
-                        {activeActionId === member.userId
-                          ? "Removing..."
-                          : "Confirm"}
-                      </button>
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      className="text-button danger-text"
-                      onClick={() => setMemberToRemove(member.userId)}
-                    >
-                      Remove
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+            <section className="members-section">
+              <h4>Workspace members {!isLoading && `(${members.length})`}</h4>
+              {isLoading ? (
+                <p className="members-empty" role="status">
+                  Loading members...
+                </p>
+              ) : members.length === 0 ? (
+                <p className="members-empty">No members to show.</p>
+              ) : (
+                <ul className="member-list">
+                  {members.map((member) => {
+                    const isSuperadmin = member.role === "superadmin";
+                    const selectedBoards = boardSelections[member.userId] ?? [];
+                    const savedBoards = member.boardMemberships
+                      .map((grant) => grant.board.id)
+                      .sort();
+                    const hasBoardChanges =
+                      selectedBoards.slice().sort().join(",") !==
+                      savedBoards.join(",");
+                    return (
+                      <li className="member-row" key={member.userId}>
+                        <span className="member-avatar">
+                          {member.user.email.charAt(0).toUpperCase()}
+                        </span>
+                        <span className="member-email">
+                          {member.user.email}
+                        </span>
+                        {isSuperadmin ? (
+                          <span className="member-role">Superadmin</span>
+                        ) : (
+                          <select
+                            className="member-role-select"
+                            aria-label={`Role for ${member.user.email}`}
+                            value={member.role}
+                            disabled={activeActionId === member.userId}
+                            onChange={(event) =>
+                              void handleRoleChange(
+                                member,
+                                event.target.value === "admin"
+                                  ? "admin"
+                                  : "member",
+                              )
+                            }
+                          >
+                            <option value="member">Member</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                        )}
+                        {!isSuperadmin &&
+                          (memberToRemove === member.userId ? (
+                            <span className="member-confirm-actions">
+                              <button
+                                type="button"
+                                className="text-button"
+                                onClick={() => setMemberToRemove(null)}
+                                disabled={activeActionId === member.userId}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                className="text-button danger-text"
+                                onClick={() => void handleRemoveMember(member)}
+                                disabled={activeActionId === member.userId}
+                              >
+                                {activeActionId === member.userId
+                                  ? "Removing..."
+                                  : "Confirm"}
+                              </button>
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="text-button danger-text"
+                              onClick={() => setMemberToRemove(member.userId)}
+                            >
+                              Remove
+                            </button>
+                          ))}
+                        {canManage && member.role === "member" && (
+                          <div className="member-board-access">
+                            <fieldset className="board-access-options">
+                              <legend>Board access</legend>
+                              {boards.map((board) => (
+                                <label key={board.id}>
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedBoards.includes(board.id)}
+                                    onChange={(event) =>
+                                      setBoardSelections((current) => {
+                                        const currentIds =
+                                          current[member.userId] ?? [];
+                                        return {
+                                          ...current,
+                                          [member.userId]: event.target.checked
+                                            ? [...currentIds, board.id]
+                                            : currentIds.filter(
+                                                (id) => id !== board.id,
+                                              ),
+                                        };
+                                      })
+                                    }
+                                  />
+                                  {board.title}
+                                </label>
+                              ))}
+                            </fieldset>
+                            {hasBoardChanges && (
+                              <button
+                                type="button"
+                                className="text-button"
+                                onClick={() =>
+                                  void handleBoardSelectionSave(member)
+                                }
+                                disabled={activeActionId === member.userId}
+                              >
+                                Save board access
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
 
-        <section className="members-section">
-          <h4>
-            Workspace invitations{" "}
-            {!isLoading && `(${organizationInvitations.length})`}
-          </h4>
-          {organizationInvitations.length === 0 ? (
-            <p className="members-empty">No workspace invitations.</p>
-          ) : (
-            <ul className="member-list">
-              {organizationInvitations.map((invitation) => (
-                <li className="member-row" key={invitation.id}>
-                  <span className="member-email">{invitation.email}</span>
-                  <span className="member-role">
-                    {invitation.status === "FAILED"
-                      ? "Email failed"
-                      : "Pending"}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+            <section className="members-section">
+              <h4>
+                Workspace invitations{" "}
+                {!isLoading && `(${organizationInvitations.length})`}
+              </h4>
+              {organizationInvitations.length === 0 ? (
+                <p className="members-empty">No workspace invitations.</p>
+              ) : (
+                <ul className="member-list">
+                  {organizationInvitations.map((invitation) => (
+                    <li className="member-row" key={invitation.id}>
+                      <span className="member-email">{invitation.email}</span>
+                      <span className="member-role">
+                        {invitation.status === "FAILED"
+                          ? "Email failed"
+                          : invitation.status}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </>
+        )}
 
         <section className="members-section">
           <h4>Invitations for you</h4>
@@ -418,6 +590,14 @@ export function OrganizationMembersDialog({
                         ? ` by ${invitation.inviter.email}`
                         : ""}
                     </span>
+                    {invitation.boards && invitation.boards.length > 0 && (
+                      <span>
+                        Boards:{" "}
+                        {invitation.boards
+                          .map((grant) => grant.board.title)
+                          .join(", ")}
+                      </span>
+                    )}
                   </div>
                   <div className="member-confirm-actions">
                     <button

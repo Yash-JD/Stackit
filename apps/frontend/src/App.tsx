@@ -300,76 +300,95 @@ function WorkspaceHome() {
           </section>
         ) : (
           <div className="workspace-board-groups">
-            {workspaces.map(({ organization, boards }) => (
-              <section className="workspace-board-group" key={organization.id}>
-                <div className="workspace-board-group-header">
-                  <div className="workspace-avatar">
-                    {organization.name.charAt(0).toUpperCase()}
+            {workspaces.map(({ organization, boards }) => {
+              const canManageWorkspace =
+                organization.membershipRole === "superadmin" ||
+                organization.membershipRole === "admin";
+              return (
+                <section
+                  className="workspace-board-group"
+                  key={organization.id}
+                >
+                  <div className="workspace-board-group-header">
+                    <div className="workspace-avatar">
+                      {organization.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <h2>{organization.name}</h2>
+                      <p>
+                        {boards.length}{" "}
+                        {boards.length === 1 ? "board" : "boards"}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h2>{organization.name}</h2>
-                    <p>
-                      {boards.length} {boards.length === 1 ? "board" : "boards"}
-                    </p>
-                  </div>
-                </div>
-                <div className="workspace-board-grid">
-                  {boards.map((board, index) => (
-                    <article className="workspace-board-card" key={board.id}>
-                      <div className="workspace-board-card-actions">
-                        <button
-                          type="button"
-                          className="icon-button"
-                          aria-label={`Rename ${board.title}`}
-                          title="Rename board"
-                          onClick={() =>
-                            openBoardManagement({ type: "rename", board })
-                          }
+                  <div className="workspace-board-grid">
+                    {boards.map((board, index) => (
+                      <article className="workspace-board-card" key={board.id}>
+                        {canManageWorkspace && (
+                          <div className="workspace-board-card-actions">
+                            <button
+                              type="button"
+                              className="icon-button"
+                              aria-label={`Rename ${board.title}`}
+                              title="Rename board"
+                              onClick={() =>
+                                openBoardManagement({ type: "rename", board })
+                              }
+                            >
+                              <Pencil size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              className="icon-button danger"
+                              aria-label={`Delete ${board.title}`}
+                              title="Delete board"
+                              onClick={() =>
+                                openBoardManagement({ type: "delete", board })
+                              }
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        )}
+                        <Link
+                          className="workspace-board-card-link"
+                          to={`/board/${board.id}`}
                         >
-                          <Pencil size={15} />
-                        </button>
-                        <button
-                          type="button"
-                          className="icon-button danger"
-                          aria-label={`Delete ${board.title}`}
-                          title="Delete board"
-                          onClick={() =>
-                            openBoardManagement({ type: "delete", board })
-                          }
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                      <Link
-                        className="workspace-board-card-link"
-                        to={`/board/${board.id}`}
+                          <span
+                            className={`workspace-board-art art-${index % 4}`}
+                          >
+                            <span>{board.title.charAt(0).toUpperCase()}</span>
+                          </span>
+                          <strong>{board.title}</strong>
+                        </Link>
+                      </article>
+                    ))}
+                    {canManageWorkspace && (
+                      <button
+                        type="button"
+                        className="workspace-board-add"
+                        onClick={() => openCreateBoard(organization.id)}
                       >
-                        <span
-                          className={`workspace-board-art art-${index % 4}`}
-                        >
-                          <span>{board.title.charAt(0).toUpperCase()}</span>
-                        </span>
-                        <strong>{board.title}</strong>
-                      </Link>
-                    </article>
-                  ))}
-                  <button
-                    type="button"
-                    className="workspace-board-add"
-                    onClick={() => openCreateBoard(organization.id)}
-                  >
-                    <Plus size={17} />
-                    <span>Add new board</span>
-                  </button>
-                </div>
-              </section>
-            ))}
+                        <Plus size={17} />
+                        <span>Add new board</span>
+                      </button>
+                    )}
+                  </div>
+                </section>
+              );
+            })}
           </div>
         )}
       </main>
       {showCreateBoard && (
         <CreateBoardDialog
-          organizations={workspaces.map(({ organization }) => organization)}
+          organizations={workspaces
+            .map(({ organization }) => organization)
+            .filter(
+              (organization) =>
+                organization.membershipRole === "superadmin" ||
+                organization.membershipRole === "admin",
+            )}
           initialOrganizationId={createBoardOrganizationId}
           onClose={() => setShowCreateBoard(false)}
           onCreated={() => {
@@ -476,6 +495,7 @@ function Board() {
   const {
     columns,
     title: boardTitle,
+    canManageBoard,
     isLoading: isLoadingBoard,
     error: boardError,
     pendingMoveIds,
@@ -631,6 +651,7 @@ function Board() {
             }}
             pendingMoveIds={pendingMoveIds}
             moveError={moveError}
+            canManageLists={canManageBoard}
             onAddCard={(columnId) =>
               openDialog({ type: "create-card", columnId })
             }

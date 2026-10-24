@@ -13,6 +13,7 @@ type BoardCanvasProps = {
     sourceColumnId: string,
     targetColumnId: string,
   ) => void;
+  canManageLists: boolean;
   pendingMoveIds: string[];
   moveError: string;
   showAddList: boolean;
@@ -30,6 +31,7 @@ export function BoardCanvas({
   onEditCard,
   onDeleteCard,
   onMoveCard,
+  canManageLists,
   pendingMoveIds,
   moveError,
   showAddList,
@@ -110,33 +112,34 @@ export function BoardCanvas({
             }}
           />
         ))}
-        {showAddList ? (
-          <div className="add-list-panel">
-            <input
-              autoFocus
-              value={newListTitle}
-              onChange={(event) => onNewListTitleChange(event.target.value)}
-              onKeyDown={(event) => event.key === "Enter" && onAddList()}
-              placeholder="List name"
-            />
-            <div>
-              <button className="confirm-button" onClick={onAddList}>
-                <Check size={15} /> Add list
-              </button>
-              <button
-                className="icon-button"
-                onClick={onCancelAddList}
-                aria-label="Cancel"
-              >
-                <X size={16} />
-              </button>
+        {canManageLists &&
+          (showAddList ? (
+            <div className="add-list-panel">
+              <input
+                autoFocus
+                value={newListTitle}
+                onChange={(event) => onNewListTitleChange(event.target.value)}
+                onKeyDown={(event) => event.key === "Enter" && onAddList()}
+                placeholder="List name"
+              />
+              <div>
+                <button className="confirm-button" onClick={onAddList}>
+                  <Check size={15} /> Add list
+                </button>
+                <button
+                  className="icon-button"
+                  onClick={onCancelAddList}
+                  aria-label="Cancel"
+                >
+                  <X size={16} />
+                </button>
+              </div>
             </div>
-          </div>
-        ) : (
-          <button className="add-list-button" onClick={onShowAddList}>
-            <Plus size={17} /> Add another list
-          </button>
-        )}
+          ) : (
+            <button className="add-list-button" onClick={onShowAddList}>
+              <Plus size={17} /> Add another list
+            </button>
+          ))}
       </div>
     </div>
   );
