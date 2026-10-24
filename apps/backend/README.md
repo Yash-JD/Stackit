@@ -12,14 +12,14 @@ apps/backend/
   src/
     authentication.ts      Signup and signin
     organization.ts        Workspace CRUD and membership lookups
-    orgMember.ts           Invites, membership lists, accept/decline/removal
+    orgMember.ts           Invites, board access, roles, and membership changes
     board.ts               Board CRUD
     section.ts             Board section CRUD
     issue.ts               Issue CRUD, listing, and section moves
     comment.ts             Issue comment endpoints
   helper/
     authMiddleware.ts      JWT verification and request user identity
-    hasRole.ts             Workspace membership/role checks
+    hasRole.ts             Workspace role and board-grant checks
     email.ts               Invitation and password-reset email delivery
     errorHandler.ts        Shared Express error response handling
   shared/
@@ -82,19 +82,27 @@ configuring the required environment variables.
 
 ## Current API areas
 
-| Area           | Routes                                                                                                       |
-| -------------- | ------------------------------------------------------------------------------------------------------------ |
-| Authentication | `POST /api/v1/signup`, `POST /api/v1/signin`                                                                 |
-| Organizations  | `GET /api/v1/organization`, `POST /api/v1/organization/create`, and `/:orgId` update, get, and delete routes |
-| Membership     | `POST /api/v1/invite`, invitation pending/list/accept/reject routes, member list, and member removal         |
-| Boards         | `GET`/`POST /api/v1/boards`, `PUT`/`DELETE /api/v1/boards/:boardId`                                          |
-| Sections       | `GET`/`POST /api/v1/section`, `PUT`/`DELETE /api/v1/section/:sectionId`                                      |
-| Issues         | List/create/update/delete issues and `PUT /api/v1/issue/move/:issueId/:sectionId`                            |
-| Comments       | List/create/update/delete comments for issues                                                                |
+| Area           | Routes                                                                                                           |
+| -------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Authentication | `POST /api/v1/signup`, `POST /api/v1/signin`                                                                     |
+| Organizations  | `GET /api/v1/organization`, `POST /api/v1/organization/create`, and `/:orgId` update, get, and delete routes     |
+| Membership     | Invite with board IDs; pending/list/accept/reject invitations; member list/removal; role and board-grant updates |
+| Boards         | `GET`/`POST /api/v1/boards`, `PUT`/`DELETE /api/v1/boards/:boardId`                                              |
+| Sections       | `GET`/`POST /api/v1/section`, `PUT`/`DELETE /api/v1/section/:sectionId`                                          |
+| Issues         | List/create/update/delete issues and `PUT /api/v1/issue/move/:issueId/:sectionId`                                |
+| Comments       | List/create/update/delete comments for issues                                                                    |
 
 See the live OpenAPI document at `/api-docs` for request and response shapes.
 Authorization is enforced server-side; hiding a frontend control is not an
 access-control check.
+
+The workspace creator is assigned the sole `superadmin` role. Superadmins and
+admins can manage workspace/board/list operations and access all workspace
+boards. Members must have an active workspace membership and explicit board
+grant; they can manage cards and comments on assigned boards. The API rejects
+attempts to demote or remove the superadmin, including self-removal. Board
+grant changes are validated against the target workspace. Apply the reviewed
+Phase 10 migrations before using these routes on an existing database.
 
 ## Change checklist
 

@@ -25,6 +25,15 @@ export const updateOrgSchema = z.object({
 export const MembershipSchema = z.object({
   email: z.email(),
   orgId: z.string(),
+  boardIds: z.array(z.string()).min(1),
+});
+
+export const UpdateMemberRoleSchema = z.object({
+  role: z.enum(["admin", "member"]),
+});
+
+export const UpdateMemberBoardsSchema = z.object({
+  boardIds: z.array(z.string()),
 });
 
 export const BoardSchema = z.object({

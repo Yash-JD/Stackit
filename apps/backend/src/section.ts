@@ -130,7 +130,12 @@ router.get(
     }
 
     const membership = await prisma.membership.findFirst({
-      where: { userId, orgId, isDeleted: false },
+      where: {
+        userId,
+        orgId,
+        isDeleted: false,
+        organization: { isDeleted: false },
+      },
     });
     if (!membership) {
       return res.status(403).json({
@@ -142,9 +147,20 @@ router.get(
       where: {
         orgId,
         isDeleted: false,
+        organization: { isDeleted: false },
+        ...(membership.role === "member"
+          ? {
+              memberships: {
+                some: {
+                  userId,
+                  isDeleted: false,
+                },
+              },
+            }
+          : {}),
       },
       include: {
-        sections: true,
+        sections: { where: { isDeleted: false } },
       },
     });
 

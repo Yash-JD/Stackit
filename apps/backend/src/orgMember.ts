@@ -1,5 +1,9 @@
 import express, { type Response, type Request } from "express";
-import { MembershipSchema } from "../zod";
+import {
+  MembershipSchema,
+  UpdateMemberBoardsSchema,
+  UpdateMemberRoleSchema,
+} from "../zod";
 import { prisma } from "db/client";
 
 import { authMiddleware } from "../helper/authMiddleware";
@@ -29,9 +33,48 @@ router.post(
       });
     }
 
+    const boardIds = [...new Set(data.boardIds)];
+    const boards = await prisma.boards.findMany({
+      where: {
+        id: { in: boardIds },
+        orgId: data.orgId,
+        isDeleted: false,
+        organization: { isDeleted: false },
+      },
+      select: { id: true },
+    });
+    if (boards.length !== boardIds.length) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_BOARD_ASSIGNMENT",
+      });
+    }
+
+    const normalizedEmail = data.email.trim().toLowerCase();
+    const invitee = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true },
+    });
+    if (
+      invitee &&
+      (await prisma.membership.findFirst({
+        where: {
+          userId: invitee.id,
+          orgId: data.orgId,
+          isDeleted: false,
+        },
+        select: { id: true },
+      }))
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: "ALREADY_WORKSPACE_MEMBER",
+      });
+    }
+
     const existingInvitation = await prisma.invitation.findFirst({
       where: {
-        email: data.email,
+        email: normalizedEmail,
         orgId: data.orgId,
         status: "PENDING",
         isDeleted: false,
@@ -47,10 +90,13 @@ router.post(
 
     const invitation = await prisma.invitation.create({
       data: {
-        email: data.email,
+        email: normalizedEmail,
         orgId: data.orgId,
         invitedBy: adminId,
         role: "member",
+        boards: {
+          create: boardIds.map((boardId) => ({ boardId })),
+        },
       },
     });
 
@@ -63,7 +109,7 @@ router.post(
     try {
       await sendInviteEmail(
         `${org?.name || "Stackit"} <onboarding@resend.dev>`,
-        data.email,
+        normalizedEmail,
         org?.name ?? "an organization",
         invitation.id,
       );
@@ -112,6 +158,11 @@ router.get(
       },
       include: {
         org: { select: { id: true, name: true } },
+        boards: {
+          include: {
+            board: { select: { id: true, title: true } },
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -144,6 +195,11 @@ router.get(
       },
       include: {
         inviter: { select: { email: true } },
+        boards: {
+          include: {
+            board: { select: { id: true, title: true } },
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -162,23 +218,21 @@ router.post(
     const userId = req.id;
     const inviteId = req.params.inviteId as string;
 
-    const invite = await prisma.invitation.findUnique({
+    const invite = await prisma.invitation.findFirst({
       where: {
         id: inviteId,
         isDeleted: false,
+        status: "PENDING",
+        org: { isDeleted: false },
+      },
+      include: {
+        boards: { select: { boardId: true } },
       },
     });
     if (!invite) {
       return res.status(404).json({
         success: false,
         error: "INVITATION_NOT_FOUND",
-      });
-    }
-
-    if (invite.status !== "PENDING") {
-      return res.status(400).json({
-        success: false,
-        error: "INVITATION_ACCEPTED_OR_DECLINED",
       });
     }
 
@@ -189,7 +243,7 @@ router.post(
       },
     });
 
-    if (user?.email !== invite.email) {
+    if (user?.email.toLowerCase() !== invite.email.toLowerCase()) {
       return res.status(403).json({
         success: false,
         error: "INVITATION_NOT_FOUND",
@@ -202,6 +256,7 @@ router.post(
         orgId: invite.orgId,
         isDeleted: false,
       },
+      select: { id: true },
     });
     if (existingMembership) {
       return res.status(400).json({
@@ -209,21 +264,57 @@ router.post(
         error: "ALREADY_ADDED",
       });
     }
-    await prisma.membership.create({
-      data: {
-        userId: userId,
-        orgId: invite.orgId,
-        role: invite.role,
-      },
+
+    const accepted = await prisma.$transaction(async (transaction) => {
+      const claimedInvitation = await transaction.invitation.updateMany({
+        where: {
+          id: invite.id,
+          status: "PENDING",
+          isDeleted: false,
+        },
+        data: { status: "ACCEPTED" },
+      });
+      if (claimedInvitation.count !== 1) return false;
+
+      const membership = await transaction.membership.findUnique({
+        where: {
+          userId_orgId: { userId, orgId: invite.orgId },
+        },
+      });
+      if (membership?.isDeleted) {
+        await transaction.membership.update({
+          where: {
+            userId_orgId: { userId, orgId: invite.orgId },
+          },
+          data: { isDeleted: false, role: "member" },
+        });
+      } else if (!membership) {
+        await transaction.membership.create({
+          data: {
+            userId,
+            orgId: invite.orgId,
+            role: "member",
+          },
+        });
+      }
+
+      for (const { boardId } of invite.boards) {
+        await transaction.boardMembership.upsert({
+          where: { userId_boardId: { userId, boardId } },
+          create: { userId, boardId },
+          update: { isDeleted: false },
+        });
+      }
+
+      return true;
     });
-    await prisma.invitation.update({
-      where: {
-        id: invite.id,
-      },
-      data: {
-        status: "ACCEPTED",
-      },
-    });
+
+    if (!accepted) {
+      return res.status(400).json({
+        success: false,
+        error: "INVITATION_ACCEPTED_OR_DECLINED",
+      });
+    }
 
     return res.status(200).json({
       success: true,
@@ -262,7 +353,7 @@ router.post(
       select: { email: true },
     });
 
-    if (user?.email !== invitation.email) {
+    if (user?.email.toLowerCase() !== invitation.email.toLowerCase()) {
       return res.status(403).json({
         success: false,
         error: "UNAUTHORIZED",
@@ -296,15 +387,196 @@ router.get(
     }
 
     const membership = await prisma.membership.findMany({
-      where: { orgId, isDeleted: false },
-      include: {
-        user: { select: { id: true, email: true, profilePhoto: true } },
+      where: {
+        orgId,
+        isDeleted: false,
+        organization: { isDeleted: false },
       },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            profilePhoto: true,
+            boardMemberships: {
+              where: {
+                isDeleted: false,
+                board: { isDeleted: false, orgId },
+              },
+              include: { board: { select: { id: true, title: true } } },
+            },
+          },
+        },
+      },
+    });
+    const members = membership.map(({ user, ...member }) => ({
+      ...member,
+      user: {
+        id: user.id,
+        email: user.email,
+        profilePhoto: user.profilePhoto,
+      },
+      boardMemberships: user.boardMemberships,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: { membership: members },
+    });
+  },
+);
+
+router.put(
+  "/api/v1/membership/:userId/:orgId/role",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    const { success, data } = UpdateMemberRoleSchema.safeParse(req.body);
+    if (!success) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_ROLE",
+      });
+    }
+
+    const { userId, orgId } = req.params as {
+      userId: string;
+      orgId: string;
+    };
+    if (!(await hasRole(req.id, orgId, "admin"))) {
+      return res.status(403).json({
+        success: false,
+        error: "UNAUTHORIZED",
+      });
+    }
+
+    const targetMembership = await prisma.membership.findUnique({
+      where: { userId_orgId: { userId, orgId } },
+    });
+    if (!targetMembership || targetMembership.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        error: "MEMBERSHIP_NOT_FOUND",
+      });
+    }
+    if (targetMembership.role === "superadmin") {
+      return res.status(400).json({
+        success: false,
+        error: "SUPERADMIN_ROLE_CANNOT_BE_CHANGED",
+      });
+    }
+
+    if (targetMembership.role === "admin" && data.role === "member") {
+      const adminCount = await prisma.membership.count({
+        where: {
+          orgId,
+          role: { in: ["admin", "superadmin"] },
+          isDeleted: false,
+        },
+      });
+      if (adminCount <= 1) {
+        return res.status(400).json({
+          success: false,
+          error: "CANNOT_DEMOTE_LAST_ADMIN",
+        });
+      }
+    }
+
+    const membership = await prisma.membership.update({
+      where: { userId_orgId: { userId, orgId } },
+      data: { role: data.role },
+      select: { userId: true, orgId: true, role: true },
+    });
+
+    return res.status(200).json({ success: true, data: { membership } });
+  },
+);
+
+router.put(
+  "/api/v1/membership/:userId/:orgId/boards",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    const { success, data } = UpdateMemberBoardsSchema.safeParse(req.body);
+    if (!success) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_BOARD_ASSIGNMENT",
+      });
+    }
+
+    const { userId, orgId } = req.params as {
+      userId: string;
+      orgId: string;
+    };
+    if (!(await hasRole(req.id, orgId, "admin"))) {
+      return res.status(403).json({
+        success: false,
+        error: "UNAUTHORIZED",
+      });
+    }
+
+    const targetMembership = await prisma.membership.findUnique({
+      where: { userId_orgId: { userId, orgId } },
+    });
+    if (!targetMembership || targetMembership.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        error: "MEMBERSHIP_NOT_FOUND",
+      });
+    }
+    if (targetMembership.role !== "member") {
+      return res.status(400).json({
+        success: false,
+        error: "BOARD_ASSIGNMENTS_ONLY_APPLY_TO_MEMBERS",
+      });
+    }
+
+    const boardIds = [...new Set(data.boardIds)];
+    const boards = await prisma.boards.findMany({
+      where: {
+        id: { in: boardIds },
+        orgId,
+        isDeleted: false,
+      },
+      select: { id: true },
+    });
+    if (boards.length !== boardIds.length) {
+      return res.status(400).json({
+        success: false,
+        error: "INVALID_BOARD_ASSIGNMENT",
+      });
+    }
+
+    const existingGrants = await prisma.boardMembership.findMany({
+      where: {
+        userId,
+        board: { orgId },
+      },
+      select: { id: true, boardId: true },
+    });
+    const grantsToRevoke = existingGrants
+      .filter((grant) => !boardIds.includes(grant.boardId))
+      .map((grant) => grant.id);
+
+    await prisma.$transaction(async (transaction) => {
+      if (grantsToRevoke.length > 0) {
+        await transaction.boardMembership.updateMany({
+          where: { id: { in: grantsToRevoke } },
+          data: { isDeleted: true },
+        });
+      }
+
+      for (const boardId of boardIds) {
+        await transaction.boardMembership.upsert({
+          where: { userId_boardId: { userId, boardId } },
+          create: { userId, boardId },
+          update: { isDeleted: false },
+        });
+      }
     });
 
     return res.status(200).json({
       success: true,
-      data: { membership },
+      msg: "BOARD_ACCESS_UPDATED",
     });
   },
 );
@@ -333,16 +605,27 @@ router.delete(
       },
     });
 
-    if (!targetMembership) {
+    if (!targetMembership || targetMembership.isDeleted) {
       return res.status(404).json({
         success: false,
         error: "MEMBERSHIP_NOT_FOUND",
       });
     }
 
+    if (targetMembership.role === "superadmin") {
+      return res.status(400).json({
+        success: false,
+        error: "SUPERADMIN_CANNOT_BE_REMOVED",
+      });
+    }
+
     if (targetMembership.role === "admin") {
       const adminCount = await prisma.membership.count({
-        where: { orgId, role: "admin", isDeleted: false },
+        where: {
+          orgId,
+          role: { in: ["admin", "superadmin"] },
+          isDeleted: false,
+        },
       });
       if (adminCount <= 1) {
         return res.status(400).json({
@@ -352,16 +635,19 @@ router.delete(
       }
     }
 
-    await prisma.membership.update({
-      where: {
-        userId_orgId: {
-          userId: userId,
-          orgId: orgId,
+    await prisma.$transaction(async (transaction) => {
+      await transaction.membership.update({
+        where: { userId_orgId: { userId, orgId } },
+        data: { isDeleted: true },
+      });
+      await transaction.boardMembership.updateMany({
+        where: {
+          userId,
+          isDeleted: false,
+          board: { orgId },
         },
-      },
-      data: {
-        isDeleted: true,
-      },
+        data: { isDeleted: true },
+      });
     });
 
     return res.status(200).json({

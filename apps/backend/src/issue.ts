@@ -3,6 +3,7 @@ import { IssueSchema, UpdateIssueSchema } from "../zod";
 import { prisma } from "db/client";
 
 import { authMiddleware } from "../helper/authMiddleware";
+import { hasBoardAccess } from "../helper/hasRole";
 
 const router = express.Router();
 
@@ -17,18 +18,7 @@ router.post(
       where: {
         id: sectionId,
         isDeleted: false,
-        board: {
-          isDeleted: false,
-          organization: {
-            isDeleted: false,
-            memberships: {
-              some: {
-                userId,
-                isDeleted: false,
-              },
-            },
-          },
-        },
+        board: { isDeleted: false, organization: { isDeleted: false } },
       },
       select: {
         id: true,
@@ -37,6 +27,12 @@ router.post(
     });
 
     if (!section) {
+      return res.status(404).json({
+        success: false,
+        error: "SECTION_NOT_FOUND",
+      });
+    }
+    if (!(await hasBoardAccess(userId, section.boardId))) {
       return res.status(403).json({
         success: false,
         error: "UNAUTHORIZED",
@@ -78,35 +74,34 @@ router.get(
       where: {
         id: sectionId,
         isDeleted: false,
-        board: {
-          isDeleted: false,
-          organization: {
-            isDeleted: false,
-            memberships: {
-              some: {
-                userId,
-                isDeleted: false,
-              },
-            },
-          },
-        },
+        board: { isDeleted: false, organization: { isDeleted: false } },
       },
       select: {
         id: true,
-        issues: true,
+        boardId: true,
       },
     });
 
     if (!section) {
+      return res.status(404).json({
+        success: false,
+        error: "SECTION_NOT_FOUND",
+      });
+    }
+    if (!(await hasBoardAccess(userId, section.boardId))) {
       return res.status(403).json({
         success: false,
         error: "UNAUTHORIZED",
       });
     }
 
+    const issues = await prisma.issue.findMany({
+      where: { sectionId, isDeleted: false },
+    });
+
     return res.status(200).json({
       success: true,
-      data: section.issues,
+      data: issues,
     });
   },
 );
@@ -130,25 +125,19 @@ router.put(
       where: {
         id: issueId,
         isDeleted: false,
-        section: {
-          isDeleted: false,
-          board: {
-            isDeleted: false,
-            organization: {
-              isDeleted: false,
-              memberships: {
-                some: {
-                  userId,
-                  isDeleted: false,
-                },
-              },
-            },
-          },
-        },
+        section: { isDeleted: false },
+        board: { isDeleted: false, organization: { isDeleted: false } },
       },
+      select: { id: true, boardId: true },
     });
 
     if (!existingIssue) {
+      return res.status(404).json({
+        success: false,
+        error: "ISSUE_NOT_FOUND",
+      });
+    }
+    if (!(await hasBoardAccess(userId, existingIssue.boardId))) {
       return res.status(403).json({
         success: false,
         error: "UNAUTHORIZED",
@@ -183,25 +172,18 @@ router.get(
       where: {
         id: issueId,
         isDeleted: false,
-        section: {
-          isDeleted: false,
-          board: {
-            isDeleted: false,
-            organization: {
-              isDeleted: false,
-              memberships: {
-                some: {
-                  userId,
-                  isDeleted: false,
-                },
-              },
-            },
-          },
-        },
+        section: { isDeleted: false },
+        board: { isDeleted: false, organization: { isDeleted: false } },
       },
     });
 
     if (!issue) {
+      return res.status(404).json({
+        success: false,
+        error: "ISSUE_NOT_FOUND",
+      });
+    }
+    if (!(await hasBoardAccess(userId, issue.boardId))) {
       return res.status(403).json({
         success: false,
         error: "UNAUTHORIZED",
@@ -226,24 +208,18 @@ router.delete(
       where: {
         id: issueId,
         isDeleted: false,
-        section: {
-          isDeleted: false,
-          board: {
-            isDeleted: false,
-            organization: {
-              isDeleted: false,
-              memberships: {
-                some: {
-                  userId,
-                  isDeleted: false,
-                },
-              },
-            },
-          },
-        },
+        section: { isDeleted: false },
+        board: { isDeleted: false, organization: { isDeleted: false } },
       },
+      select: { id: true, boardId: true },
     });
     if (!issue) {
+      return res.status(404).json({
+        success: false,
+        error: "ISSUE_NOT_FOUND",
+      });
+    }
+    if (!(await hasBoardAccess(userId, issue.boardId))) {
       return res.status(403).json({
         success: false,
         error: "UNAUTHORIZED",
@@ -278,18 +254,8 @@ router.put(
       where: {
         id: issueId,
         isDeleted: false,
-        board: {
-          isDeleted: false,
-          organization: {
-            isDeleted: false,
-            memberships: {
-              some: {
-                userId,
-                isDeleted: false,
-              },
-            },
-          },
-        },
+        section: { isDeleted: false },
+        board: { isDeleted: false, organization: { isDeleted: false } },
       },
       select: {
         id: true,
@@ -298,6 +264,12 @@ router.put(
     });
 
     if (!issue) {
+      return res.status(404).json({
+        success: false,
+        error: "ISSUE_NOT_FOUND",
+      });
+    }
+    if (!(await hasBoardAccess(userId, issue.boardId))) {
       return res.status(403).json({
         success: false,
         error: "UNAUTHORIZED",

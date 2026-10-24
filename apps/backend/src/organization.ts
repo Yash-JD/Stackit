@@ -22,19 +22,23 @@ router.post(
     }
     const userId = req.id;
 
-    const org = await prisma.organization.create({
-      data: {
-        name: data.name,
-        description: data.description,
-      },
-    });
+    const org = await prisma.$transaction(async (transaction) => {
+      const organization = await transaction.organization.create({
+        data: {
+          name: data.name,
+          description: data.description,
+        },
+      });
 
-    await prisma.membership.create({
-      data: {
-        userId: userId,
-        orgId: org.id,
-        role: Role.admin,
-      },
+      await transaction.membership.create({
+        data: {
+          userId,
+          orgId: organization.id,
+          role: Role.superadmin,
+        },
+      });
+
+      return organization;
     });
 
     return res.status(200).json({
@@ -102,6 +106,7 @@ router.get(
       where: {
         userId: userId,
         isDeleted: false,
+        organization: { isDeleted: false },
       },
       orderBy: {
         createdAt: "desc",
@@ -139,6 +144,7 @@ router.get(
         userId: userId,
         orgId: orgId,
         isDeleted: false,
+        organization: { isDeleted: false },
       },
       include: {
         organization: true,

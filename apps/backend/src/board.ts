@@ -25,6 +25,7 @@ router.get(
         userId: userId,
         orgId: orgId,
         isDeleted: false,
+        organization: { isDeleted: false },
       },
     });
     if (!membership) {
@@ -38,6 +39,17 @@ router.get(
       where: {
         orgId: orgId,
         isDeleted: false,
+        organization: { isDeleted: false },
+        ...(membership.role === "member"
+          ? {
+              memberships: {
+                some: {
+                  userId,
+                  isDeleted: false,
+                },
+              },
+            }
+          : {}),
       },
     });
 

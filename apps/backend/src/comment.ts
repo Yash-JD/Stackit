@@ -3,6 +3,7 @@ import { CommentsSchema } from "../zod";
 import { prisma } from "db/client";
 
 import { authMiddleware } from "../helper/authMiddleware";
+import { hasBoardAccess } from "../helper/hasRole";
 
 const router = express.Router();
 
@@ -24,22 +25,15 @@ router.post(
       where: {
         id: issueId,
         isDeleted: false,
-        board: {
-          isDeleted: false,
-          organization: {
-            isDeleted: false,
-            memberships: {
-              some: {
-                userId,
-                isDeleted: false,
-              },
-            },
-          },
-        },
+        board: { isDeleted: false, organization: { isDeleted: false } },
+      },
+      select: {
+        id: true,
+        boardId: true,
       },
     });
 
-    if (!issue) {
+    if (!issue || !(await hasBoardAccess(userId, issue.boardId))) {
       return res.status(403).json({
         success: false,
         error: "UNAUTHORIZED",
@@ -88,20 +82,16 @@ router.put(
           isDeleted: false,
           board: {
             isDeleted: false,
-            organization: {
-              isDeleted: false,
-              memberships: {
-                some: {
-                  userId,
-                },
-              },
-            },
+            organization: { isDeleted: false },
           },
         },
       },
+      include: {
+        issue: { select: { boardId: true } },
+      },
     });
 
-    if (!comment) {
+    if (!comment || !(await hasBoardAccess(userId, comment.issue.boardId))) {
       return res.status(403).json({
         success: false,
         error: "UNAUTHORIZED",
@@ -144,15 +134,7 @@ router.get(
         isDeleted: false,
         board: {
           isDeleted: false,
-          organization: {
-            isDeleted: false,
-            memberships: {
-              some: {
-                userId,
-                isDeleted: false,
-              },
-            },
-          },
+          organization: { isDeleted: false },
         },
       },
       include: {
@@ -166,7 +148,7 @@ router.get(
       },
     });
 
-    if (!issue) {
+    if (!issue || !(await hasBoardAccess(userId, issue.boardId))) {
       return res.status(403).json({
         success: false,
         error: "UNAUTHORIZED",
@@ -195,21 +177,16 @@ router.delete(
           isDeleted: false,
           board: {
             isDeleted: false,
-            organization: {
-              isDeleted: false,
-              memberships: {
-                some: {
-                  userId,
-                  isDeleted: false,
-                },
-              },
-            },
+            organization: { isDeleted: false },
           },
         },
       },
+      include: {
+        issue: { select: { boardId: true } },
+      },
     });
 
-    if (!comment) {
+    if (!comment || !(await hasBoardAccess(userId, comment.issue.boardId))) {
       return res.status(403).json({
         success: false,
         error: "UNAUTHORIZED",

@@ -238,6 +238,58 @@ const apiDocument = {
         },
       },
     },
+    "/api/v1/membership/{userId}/{orgId}/role": {
+      parameters: [
+        { $ref: "#/components/parameters/UserId" },
+        { $ref: "#/components/parameters/OrgId" },
+      ],
+      put: {
+        tags: ["Memberships"],
+        security: [{ bearerAuth: [] }],
+        summary: "Update a regular member's workspace role",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/MemberRoleUpdateRequest" },
+            },
+          },
+        },
+        responses: {
+          "200": { $ref: "#/components/responses/SuccessResponse" },
+          "400": { $ref: "#/components/responses/BadRequest" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+        },
+      },
+    },
+    "/api/v1/membership/{userId}/{orgId}/boards": {
+      parameters: [
+        { $ref: "#/components/parameters/UserId" },
+        { $ref: "#/components/parameters/OrgId" },
+      ],
+      put: {
+        tags: ["Memberships"],
+        security: [{ bearerAuth: [] }],
+        summary: "Replace a member's board access grants",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/MemberBoardAccessRequest",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { $ref: "#/components/responses/SuccessResponse" },
+          "400": { $ref: "#/components/responses/BadRequest" },
+          "403": { $ref: "#/components/responses/Forbidden" },
+          "404": { $ref: "#/components/responses/NotFound" },
+        },
+      },
+    },
     "/api/v1/boards": {
       get: {
         tags: ["Boards"],
@@ -673,10 +725,25 @@ const apiDocument = {
       },
       InvitationRequest: {
         type: "object",
-        required: ["email", "orgId"],
+        required: ["email", "orgId", "boardIds"],
         properties: {
           email: { type: "string", format: "email" },
           orgId: { type: "string" },
+          boardIds: { type: "array", minItems: 1, items: { type: "string" } },
+        },
+      },
+      MemberRoleUpdateRequest: {
+        type: "object",
+        required: ["role"],
+        properties: {
+          role: { type: "string", enum: ["admin", "member"] },
+        },
+      },
+      MemberBoardAccessRequest: {
+        type: "object",
+        required: ["boardIds"],
+        properties: {
+          boardIds: { type: "array", items: { type: "string" } },
         },
       },
       BoardRequest: {
