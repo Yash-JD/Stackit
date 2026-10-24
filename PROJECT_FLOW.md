@@ -126,9 +126,18 @@ are made:
   board-access policy, and invitation email failure handling; frontend,
   WebSocket, and database integration coverage remains.
 - Improve accessibility, keyboard use, responsive layouts, and interaction
-  feedback. Card moves now have keyboard-accessible controls.
+  feedback. Card moves now have keyboard-accessible controls. Removed the
+  placeholder member count, styled card filter/move selectors, widened card
+  controls, and stabilized dialog widths during loading.
 - Standardize loading, empty, retry, and error states. Board loading errors
   include retry controls and empty lists have explanatory text.
+- Added a profile page with editable display name, photo URL, and description,
+  read-only email, and an explicit sign-out action. A new pending migration
+  adds/backfills the display name; it has not been applied.
+- Workspace members see the saved display name (or email local-part fallback),
+  and cannot change or remove their own membership. These checks are enforced
+  in both the member-management UI and API.
+- The boards home now shows boards only for the currently selected workspace.
 - Add regression coverage for API-level permission enforcement, optimistic
   updates, and real-time behavior.
 
@@ -140,6 +149,25 @@ are made:
   service lifecycle guidance.
 - Perform production security, performance, browser, and reliability checks.
 
+### Phase 15 — Version 2 product expansion (planned after Phase 14)
+
+- Introduce a free-tier usage policy: initially allow up to 2 workspaces per
+  user, 3 boards per workspace, and a capped number of member invitations per
+  board. The exact invite cap and whether quotas are account- or workspace-
+  scoped remain product decisions.
+- Enforce quotas in backend operations as the source of truth, explain limits
+  before users hit them, show usage, and preserve existing data if an account
+  exceeds a changed limit.
+- Design a paid subscription and billing model; integrate Stripe Checkout,
+  subscription webhooks, customer billing management, cancellation, and
+  entitlement state only after pricing, plans, and upgrade/downgrade behavior
+  are agreed. Webhook processing must be authenticated and idempotent.
+- Add board sharing after defining link/member access, visibility, revocation,
+  and permissions; do not assume public links without an explicit decision.
+- Implement board sorting, richer filters, and a grid/card view switch.
+  Define supported sort keys, filter combinations, responsive behavior, and
+  whether preferences persist before implementation.
+
 ## Known limitations and decisions to revisit
 
 - Migrations are not applied automatically by schema generation. The project
@@ -149,8 +177,8 @@ are made:
   workspace to `superadmin`, because the old schema did not record a workspace
   creator. It intentionally does not assign boards to existing members.
 - Phase 11 uses a fixed set of single-select labels and date-only due dates.
-  There are no card assignments, custom labels, or new notification delivery;
-  notifications remain part of future real-time product decisions.
+  There are no card assignments or custom labels. Version 2 planning includes
+  fuller filters and board views; scope and behavior remain to be agreed.
 - Board and card mutations remain available through the API while WebSocket
   clients reconnect; connected peers may need a refresh if a notification
   could not be delivered.

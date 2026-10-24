@@ -15,8 +15,9 @@ packages/db/
   package.json              Prisma CLI/client dependencies and scripts
 ```
 
-The current schema includes users, organizations, memberships, invitations,
-board grants, boards, sections, issues, and comments. Important relationships:
+The current schema includes users with an editable display name,
+organizations, memberships, invitations, board grants, boards, sections,
+issues, and comments. Important relationships:
 
 - A user can belong to multiple organizations through a membership.
 - Membership roles are `superadmin`, `admin`, and `member`. A workspace has at
@@ -90,6 +91,11 @@ The legacy migration promotes the oldest active admin in each existing
 workspace because workspace creator identity was not recorded in the old
 schema. Existing regular members are intentionally not granted boards; assign
 their board access as needed after migration status is confirmed.
+
+The `20261024151800_add_user_display_name` migration adds the nullable user
+`name` column and backfills existing rows from the email local-part. It was
+generated for the profile-name feature and has not been applied; apply it only
+after the project owner confirms the intended database and migration timing.
 
 ## Change checklist
 

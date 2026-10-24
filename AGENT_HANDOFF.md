@@ -16,6 +16,9 @@ secret environment values into this file.
   validated; Phase 13 quality and polish is in progress. The project owner
   reports that Phase 10–12 migrations have been handled; verify target
   database migration status before any future migration operation.
+- **Next after production readiness:** Planned Phase 15 / Version 2 includes
+  free-tier usage limits, eventual Stripe billing, board sharing, sorting,
+  richer filters, and a grid view. See the roadmap for open product decisions.
 - **Canonical docs:** [project flow and roadmap](./PROJECT_FLOW.md),
   [root setup](./README.md), and the four package guides linked below.
 
@@ -45,6 +48,13 @@ secret environment values into this file.
 - Keyboard users can move cards between lists and reorder cards when search
   and label filters are inactive. Board load errors offer retry, and empty
   lists explain their state.
+- Workspace boards are scoped to the selected workspace on the boards home.
+- The account profile page supports editing display name, profile photo URL,
+  and description, keeps email read-only, and provides a separate red sign-out
+  action. Sidebar profile-load failures do not remain stuck in a loading state.
+- Member rows display the saved name or email local-part fallback. Users
+  cannot change or remove their own workspace membership; backend policy tests
+  cover self-action and protected-superadmin cases.
 - Local card/list state updates avoid refetching the whole board after simple
   mutations.
 - Sidebar workspace selection, navigation, collapse/expand, and Stackit
@@ -78,9 +88,15 @@ secret environment values into this file.
 - Realtime notifications are best-effort. The API and database remain the
   source of truth, and users can manually retry the WebSocket connection.
 - Phase 13 is incomplete: database-independent tests cover issue ordering,
-  board-access policy, and invitation email failure handling. API persistence,
-  frontend, WebSocket, and database integration regressions still need
-  coverage.
+  board-access policy, invitation email failure handling, membership
+  mutation policy, and profile update validation. API persistence, frontend,
+  WebSocket, and database integration regressions still need coverage.
+- The `20261024151800_add_user_display_name` migration adds the nullable
+  `User.name` field and backfills existing users from the email local-part.
+  It has not been applied; do not run migration commands without confirming
+  the intended database and timing with the project owner.
+- Phase 15 is planned after production readiness; free-tier quota values,
+  Stripe plan/pricing details, and board-sharing semantics are not finalized.
 
 ## Architecture and package guides
 
