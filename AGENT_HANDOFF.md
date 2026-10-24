@@ -12,7 +12,8 @@ secret environment values into this file.
 - **Layout:** Bun/Turborepo monorepo with React frontend, Express API,
   WebSocket service, and shared Prisma/PostgreSQL package.
 - **Package manager:** Bun 1.3.14.
-- **Current product milestone:** Phases 1–9 implemented; Phase 10 is next.
+- **Current product milestone:** Phase 10 is implemented in code and validated;
+  its migrations are not yet applied to a database.
 - **Canonical docs:** [project flow and roadmap](./PROJECT_FLOW.md),
   [root setup](./README.md), and the four package guides linked below.
 
@@ -36,6 +37,12 @@ secret environment values into this file.
   invitation status `FAILED`; admins can see the status.
 - Authenticated WebSocket notification flow for connected workspace admins
   when invitation delivery fails.
+- Workspace role hierarchy: one protected `superadmin`, plus `admin` and
+  board-scoped `member` access.
+- Admin People UI for inviting members with selected boards, updating regular
+  member roles and board grants, and removing non-superadmin members.
+- Backend authorization filters board/list reads and protects board/list
+  management, card/comment operations, membership changes, and invite flows.
 
 ### Existing foundations not fully productized
 
@@ -43,9 +50,10 @@ secret environment values into this file.
   planned.
 - WebSocket server supports board room presence and event relay, but the
   frontend is not fully integrated with board-level real-time updates.
-- Backend has `admin` and `member` roles and some admin-only routes. The
-  complete permission matrix and possible board-level membership are Phase 10
-  work, not assumptions to silently bake into the current model.
+- Phase 10 migrations add board grants and `superadmin`. They are generated
+  and validated but not applied. The legacy migration promotes the oldest
+  active admin membership as superadmin because prior schema did not record
+  workspace creators; existing members are intentionally not granted boards.
 - Card destination-section moves persist; order within a section does not.
 
 ## Architecture and package guides
@@ -130,10 +138,16 @@ scope.
 
 ## Product and workflow decisions
 
-- Workspaces/organizations own boards. A membership in a workspace grants
-  access across its boards.
-- Board-only membership is not currently supported. If adding it, agree the
-  scope and design the model and authorization before implementation.
+- Workspaces/organizations own boards. Superadmins and admins access every
+  board; members require an active board grant as well as workspace
+  membership.
+- The workspace creator is assigned `superadmin` at creation. There is one
+  active superadmin per workspace, and API and UI prohibit removing or
+  demoting that account, including by itself.
+- Members may create, edit, delete, and move cards and comment on assigned
+  boards. Board and list creation/management remain admin/superadmin-only.
+- Existing regular members receive no board grants during migration; an admin
+  must explicitly assign their boards after the migration.
 - Invitations are sent to an email address and can be accepted/declined by
   the account with that matching email.
 - Invitation delivery failure is a persisted status and should be treated
@@ -170,12 +184,14 @@ scope.
 2. Inspect `git status` and existing diffs before editing; preserve unrelated
    staged and unstaged work.
 3. Confirm which roadmap phase or bug is in scope from the latest user
-   request. Do not infer that all planned features are authorized by a broad
-   roadmap.
+   request. Phase 10 is implemented; Phase 11 (project collaboration tools) is
+   next after the reviewed Phase 10 migrations have been applied.
 4. Trace a continuous feature across UI, API, authorization, WebSocket, and
    data model as applicable; preserve established patterns.
 5. Validate with the narrowest relevant type-check/build/tests and report
-   what was and was not exercised. Database migrations and live user-data
-   changes require special care.
+   what was and was not exercised. Phase 10 validation completed with Prisma
+   schema validation, generated client, API/frontend/WebSocket type-checks,
+   frontend build, and diff checks. No DB migration or live user-data change
+   was run; no dedicated automated test suite is currently defined.
 6. Update this handoff and the project flow before finishing, and update
    package guides affected by the change.

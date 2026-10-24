@@ -16,31 +16,35 @@ product's collaboration features are delivered.
 1. **Create an account or sign in.** The backend creates or authenticates the
    account and returns a JWT. The frontend stores it and protects workspace
    routes.
-2. **Open a workspace.** The sidebar loads the signed-in user's organizations.
-   The user selects a workspace or creates/updates one.
-3. **Manage boards.** The user views boards grouped by workspace, creates a
-   board, or renames/deletes it from the board list. The sidebar keeps the
-   selected workspace's boards accessible during navigation.
+2. **Open a workspace.** The sidebar loads the signed-in user's workspaces and
+   membership roles. The workspace creator is its sole `superadmin`; admins
+   and superadmins can manage workspace settings and boards.
+3. **Manage boards.** Admins and superadmins create, rename, and delete boards.
+   Members only see boards explicitly assigned to them. The sidebar keeps
+   boards the signed-in user can access available during navigation.
 4. **Plan work on a board.** A board contains sections/lists; sections contain
-   issues/cards. The user can create sections and create, edit, and delete
-   cards. Board and card operations call the backend API.
+   issues/cards. Admins and superadmins manage boards and lists. Members can
+   create, edit, delete, and move cards on boards assigned to them.
 5. **Move work.** A card can be dragged between sections. The UI moves it
    optimistically and restores its original location if the API request
    fails. The backend persists the destination section, but not ordering
    within a section.
-6. **Manage workspace people.** Workspace admins open Members to view members
-   and invitations, invite an email address, or remove a member. Invitees
-   signed in with the matching email can accept or decline invitations.
+6. **Manage workspace people.** Workspace admins invite an email address and
+   choose its board access, update regular members' roles and board grants, or
+   remove a member. The single superadmin is shown as protected and cannot be
+   removed or demoted, including by themself. Members can review invitations
+   addressed to them. Invitees signed in with the matching email can accept or
+   decline; accepting activates the selected board grants.
 7. **Handle email delivery failure.** The backend stores the invitation before
    sending its email. A failed send is persisted as `FAILED`; the inviting
    client reports the error and asks the authenticated WebSocket service to
    notify connected workspace admins. The People dialog refreshes persisted
    invitation data when it receives the event.
 
-Workspace membership applies to all boards in that workspace. The current data
-model does not support board-only memberships. Admin/member roles exist and
-the backend protects current membership operations; detailed roles and
-permissions remain a planned phase.
+Admins and the superadmin have access to all boards in their workspace.
+Members must have an active workspace membership and an explicit grant for a
+board. Existing members receive no board grants during migration and remain
+without board access until an admin assigns it.
 
 ## System request flow
 
@@ -77,6 +81,9 @@ database models from `packages/db`.
   decline, and member removal.
 - Persisted invite email failure status and live WebSocket notices for
   connected workspace admins.
+- Workspace `superadmin`/`admin`/`member` authorization with board-scoped
+  member access, role/grant management, and superadmin removal/demotion
+  protection.
 - Backend comment CRUD endpoints exist; full user-facing comments/activity
   collaboration is still planned.
 
@@ -85,17 +92,10 @@ frontend phase history and implementation concepts.
 
 ## Development roadmap
 
-Phases 1–9 are implemented. Continue with the following phases, adjusting
-scope as real product decisions are made:
-
-### Phase 10 — Roles and permissions
-
-- Define an intentional role/permission matrix for workspace and board actions.
-- Align backend authorization with the matrix and make frontend affordances
-  reflect the same rules.
-- Decide whether board-specific membership is required and design the data
-  model/migration before implementing it.
-- Cover authorization boundaries with tests.
+Phases 1–10 are implemented in code. The Phase 10 database migrations have
+been generated and validated but must still be applied to the target database.
+Continue with the following phases, adjusting scope as real product decisions
+are made:
 
 ### Phase 11 — Project collaboration tools
 
@@ -134,9 +134,12 @@ scope as real product decisions are made:
 
 ## Known limitations and decisions to revisit
 
-- Membership is workspace-wide; there is no board-only membership.
-- Workspace roles currently are `admin` and `member`; role design is not yet
-  complete.
+- The Phase 10 migrations are not applied automatically by schema generation.
+  Apply the reviewed migrations before using board grants or `superadmin`
+  roles against an existing database.
+- The legacy migration promotes the oldest active `admin` membership in each
+  workspace to `superadmin`, because the old schema did not record a workspace
+  creator. It intentionally does not assign boards to existing members.
 - Card moves persist a destination section, not within-section ordering.
 - WebSocket board-room events exist on the server, but the browser is not
   fully wired for board real-time updates. The People dialog does use sockets
@@ -144,7 +147,8 @@ scope as real product decisions are made:
 - Backend comment endpoints exist, but the complete comments/activity user
   workflow has not been delivered.
 - The repository currently has no dedicated automated test suite or CI
-  workflow documented here; confirm current tooling before adding one.
+  workflow documented here; add regression coverage for Phase 10
+  authorization boundaries as part of the quality phase.
 
 ## Documentation maintenance
 
