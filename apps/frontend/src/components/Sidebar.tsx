@@ -22,6 +22,7 @@ import {
 } from "../api";
 import { StackitLogo } from "./StackitLogo";
 import { OrganizationMembersDialog } from "./OrganizationMembersDialog";
+import { getAvatarGradient } from "../colors";
 
 type SidebarProps = {
   isOpen: boolean;
@@ -388,7 +389,13 @@ export function Sidebar({
         </button>
       </div>
       <div className="workspace-switcher">
-        <div className="workspace-avatar">
+        <div
+          className="workspace-avatar"
+          style={{
+            background: getAvatarGradient(selectedOrganization?.name ?? "Stackit"),
+            color: "#ffffff",
+          }}
+        >
           {selectedOrganization?.name.charAt(0).toUpperCase() ?? "S"}
         </div>
         <div className="workspace-picker" ref={workspacePickerRef}>

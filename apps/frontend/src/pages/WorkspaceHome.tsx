@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import {
   Activity,
+  ArrowRightLeft,
   ArrowUpRight,
   ChevronRight,
+  FileEdit,
   LayoutGrid,
+  MessageSquare,
   Plus,
   RefreshCw,
   Settings,
+  Trash2,
   UserRound,
   Users,
 } from "lucide-react";
@@ -21,6 +25,7 @@ import {
   type IssueActivity,
 } from "../api";
 import type { WorkspaceLayoutContext } from "../types";
+import { getAvatarGradient } from "../colors";
 
 function formatHomeActivity(activity: IssueActivity) {
   const cardTitle = activity.issue?.title ? `"${activity.issue.title}"` : "a card";
@@ -39,6 +44,25 @@ function formatHomeActivity(activity: IssueActivity) {
       return `deleted comment on ${cardTitle}`;
     default:
       return `${activity.action} ${cardTitle}`;
+  }
+}
+
+function getActionBadgeIcon(action: string) {
+  switch (action) {
+    case "created":
+      return <Plus size={9} strokeWidth={3} />;
+    case "updated":
+      return <FileEdit size={9} strokeWidth={2.6} />;
+    case "moved":
+      return <ArrowRightLeft size={9} strokeWidth={2.6} />;
+    case "commented":
+    case "comment_edited":
+      return <MessageSquare size={9} strokeWidth={2.6} />;
+    case "deleted":
+    case "comment_deleted":
+      return <Trash2 size={9} strokeWidth={2.6} />;
+    default:
+      return <Activity size={9} strokeWidth={2.6} />;
   }
 }
 
@@ -216,10 +240,15 @@ export function WorkspaceHome() {
                     className={`org-card ${isSelected ? "org-card-selected" : ""}`}
                   >
                     <div className="org-card-top">
-                      <div className="org-card-avatar">
+                      <div
+                        className="org-card-avatar"
+                        style={{ background: getAvatarGradient(organization.name), color: "#ffffff" }}
+                      >
                         {organization.name.charAt(0).toUpperCase()}
                       </div>
-                      <span className="org-card-role">{roleBadge}</span>
+                      <span className={`org-card-role role-${organization.membershipRole ?? "member"}`}>
+                        {roleBadge}
+                      </span>
                     </div>
                     <div className="org-card-body">
                       <h3 className="org-card-name">{organization.name}</h3>
@@ -403,14 +432,37 @@ export function WorkspaceHome() {
                       const actorName =
                         activity.actor?.name ||
                         (activity.actor?.email ? activity.actor.email.split("@")[0] : "Team member");
+                      const userSeed =
+                        activity.actor?.id ||
+                        activity.actor?.email ||
+                        activity.actor?.name ||
+                        "user";
+                      const avatarGradient = getAvatarGradient(userSeed);
                       return (
                         <li key={activity.id} className="activity-feed-item">
-                          <div className="activity-feed-avatar" title={activity.actor?.email}>
-                            {activity.actor?.profilePhoto ? (
-                              <img src={activity.actor.profilePhoto} alt={actorName} />
-                            ) : (
-                              <span>{actorInitial}</span>
-                            )}
+                          <div className="activity-feed-avatar-wrapper">
+                            <div
+                              className="activity-feed-avatar"
+                              style={{
+                                background: avatarGradient,
+                                color: "#ffffff",
+                                border: "1px solid rgba(255, 255, 255, 0.22)",
+                                fontWeight: 700,
+                              }}
+                              title={activity.actor?.email || actorName}
+                            >
+                              {activity.actor?.profilePhoto ? (
+                                <img src={activity.actor.profilePhoto} alt={actorName} />
+                              ) : (
+                                <span>{actorInitial}</span>
+                              )}
+                            </div>
+                            <span
+                              className={`activity-action-badge action-${activity.action}`}
+                              title={activity.action}
+                            >
+                              {getActionBadgeIcon(activity.action)}
+                            </span>
                           </div>
                           <div className="activity-feed-content">
                             <p className="activity-feed-text">

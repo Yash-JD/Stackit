@@ -20,6 +20,7 @@ import {
   type OrganizationMember,
   type BoardSummary,
 } from "../api";
+import { getAvatarGradient } from "../colors";
 
 type OrganizationMembersDialogProps = {
   organizationId: string;
@@ -447,7 +448,14 @@ export function OrganizationMembersDialog({
                       savedBoards.join(",");
                     return (
                       <li className="member-row" key={member.userId}>
-                        <span className="member-avatar">
+                        <span
+                          className="member-avatar"
+                          style={{
+                            background: getAvatarGradient(member.user.email),
+                            color: "#ffffff",
+                            fontWeight: 700,
+                          }}
+                        >
                           {displayName.charAt(0).toUpperCase()}
                         </span>
                         <span className="member-identity">

@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { useOutletContext } from "react-router";
+import { getAvatarGradient } from "../colors";
 import {
   AUTH_TOKEN_KEY,
   acceptInvitation,
@@ -600,7 +601,14 @@ export function MembersPage() {
                       return (
                         <tr key={member.userId} className="member-table-row">
                           <td className="member-user-cell">
-                            <div className="member-avatar">
+                            <div
+                              className="member-avatar"
+                              style={{
+                                background: getAvatarGradient(member.user.email),
+                                color: "#ffffff",
+                                fontWeight: 700,
+                              }}
+                            >
                               {member.user.profilePhoto ? (
                                 <img
                                   src={member.user.profilePhoto}

@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import type { BoardColumn, Card } from "../types";
+import { getAvatarGradient } from "../colors";
 import { MenuSelect } from "./MenuSelect";
 import {
   createIssueComment,
@@ -382,7 +383,7 @@ function BoardColumnView({
               className="task-card-open"
               onClick={() => onSelectCard(card)}
             >
-              <div className="card-label">
+              <div className={`card-label label-${card.label.toLowerCase()}-badge`}>
                 <span
                   className={`label-mark label-${card.label.toLowerCase()}`}
                 />
@@ -391,14 +392,30 @@ function BoardColumnView({
               <h3>{card.title}</h3>
               <p>{card.description}</p>
               <div className="card-meta">
-                <span className="mini-avatar">Y</span>
+                <span
+                  className="mini-avatar"
+                  style={{
+                    background: getAvatarGradient(card.title),
+                    color: "#ffffff",
+                    fontWeight: 700,
+                  }}
+                >
+                  {card.title.charAt(0).toUpperCase()}
+                </span>
                 {pendingMoveIds.includes(card.id) && (
                   <span className="card-moving-label" role="status">
                     Moving...
                   </span>
                 )}
                 {card.dueDate && (
-                  <span className="due-date">
+                  <span
+                    className={`due-date ${
+                      new Date(card.dueDate.slice(0, 10) + "T00:00:00").getTime() <
+                      new Date().setHours(0, 0, 0, 0)
+                        ? "overdue"
+                        : ""
+                    }`}
+                  >
                     Due {formatDateOnly(card.dueDate)}
                   </span>
                 )}

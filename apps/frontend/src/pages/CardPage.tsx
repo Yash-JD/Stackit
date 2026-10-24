@@ -35,6 +35,7 @@ import {
   type IssueComment,
 } from "../api";
 import type { CardLabel, WorkspaceLayoutContext } from "../types";
+import { getAvatarGradient } from "../colors";
 
 function formatDate(dateString: string | null) {
   if (!dateString) return null;
@@ -488,8 +489,10 @@ export function CardPage() {
           {/* Card Label and Status Header */}
           <div className="card-title-header">
             <div className="card-label-badge-container">
-              <span className={`label-mark label-${labelDraft.toLowerCase()}`} />
-              <span className="card-label-text">{labelDraft}</span>
+              <span className={`card-tag-badge label-${labelDraft.toLowerCase()}-badge`}>
+                <span className={`label-mark label-${labelDraft.toLowerCase()}`} />
+                <span className="card-label-text">{labelDraft}</span>
+              </span>
               <span className="card-section-badge">
                 <List size={13} /> in {sectionTitle}
               </span>
@@ -615,7 +618,14 @@ export function CardPage() {
               <div className="comments-stream">
                 {comments.map((comment) => (
                   <article key={comment.id} className="comment-item">
-                    <div className="comment-avatar">
+                    <div
+                      className="comment-avatar"
+                      style={{
+                        background: getAvatarGradient(comment.user.email),
+                        color: "#ffffff",
+                        fontWeight: 700,
+                      }}
+                    >
                       {comment.user.profilePhoto ? (
                         <img src={comment.user.profilePhoto} alt="" />
                       ) : (
@@ -851,7 +861,11 @@ export function CardPage() {
               <div className="activity-timeline">
                 {activities.map((act) => (
                   <div key={act.id} className="activity-entry">
-                    <div className="activity-dot" />
+                    <div
+                      className={`activity-dot dot-${act.action
+                        .toLowerCase()
+                        .replace(/\s+/g, "-")}`}
+                    />
                     <div className="activity-content">
                       <p className="activity-text">
                         <strong>{act.actor.email.split("@")[0]}</strong>{" "}
