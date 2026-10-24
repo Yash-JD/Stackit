@@ -52,16 +52,18 @@ bunx tsc --noEmit -p apps/websocket/tsconfig.json
 ### Board rooms
 
 Clients authenticate with a JWT in the WebSocket URL query parameter
-`token`. A `join` message requests a board room; the service verifies the
-user's workspace membership and sends initial presence state. It relays
-`issue_moved` and `board_changed` events to other sockets in that board room.
+`token`. A `join` message requests a board room; the service requires active
+workspace membership and, for regular members, an active grant for that board.
+Admins and superadmins can join every board in their workspace. Board events
+re-check current access for senders and recipients, and movement messages must
+match a persisted issue and section on the joined board.
 The browser client is not yet fully wired for board-level real-time updates;
 the event protocol is groundwork for that roadmap phase.
 
 ### Failed invitation notices
 
-Workspace admins join a room with `join_organization` and an organization ID.
-The service verifies admin membership. After an invitation email failure is
+Workspace admins and superadmins join a room with `join_organization` and an
+organization ID. The service verifies admin membership. After an invitation email failure is
 persisted by the API, the initiating client sends `invitation_failed` with
 the invitation and organization IDs. The service verifies the failed
 invitation and current admin role, then broadcasts the event to connected

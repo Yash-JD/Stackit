@@ -18,6 +18,37 @@ type Payload = {
 
 const WS_PORT = process.env.WS_PORT ? Number(process.env.WS_PORT) : 8080;
 
+async function hasBoardAccess(userId: string, boardId: string) {
+  const board = await prisma.boards.findFirst({
+    where: {
+      id: boardId,
+      isDeleted: false,
+      organization: { isDeleted: false },
+    },
+    select: { orgId: true },
+  });
+  if (!board) return false;
+
+  const membership = await prisma.membership.findFirst({
+    where: {
+      userId,
+      orgId: board.orgId,
+      isDeleted: false,
+      user: { isDeleted: false },
+      organization: { isDeleted: false },
+    },
+    select: { role: true },
+  });
+  if (!membership) return false;
+  if (membership.role !== "member") return true;
+
+  const grant = await prisma.boardMembership.findFirst({
+    where: { userId, boardId, isDeleted: false },
+    select: { id: true },
+  });
+  return Boolean(grant);
+}
+
 class WsManager {
   private static instance: WsManager;
 
@@ -125,19 +156,38 @@ class WsManager {
           where: {
             id: boardId,
             isDeleted: false,
-            organization: {
-              isDeleted: false,
-              memberships: {
-                some: {
-                  userId: payload.id,
-                  isDeleted: false,
-                },
-              },
-            },
+            organization: { isDeleted: false },
+          },
+          select: {
+            id: true,
+            orgId: true,
           },
         });
 
         if (!board) {
+          socket.close();
+          return;
+        }
+        const membership = await prisma.membership.findFirst({
+          where: {
+            userId: payload.id,
+            orgId: board.orgId,
+            isDeleted: false,
+            organization: { isDeleted: false },
+          },
+          select: { role: true },
+        });
+        const hasBoardGrant =
+          Boolean(membership) &&
+          (membership?.role === "superadmin" ||
+            membership?.role === "admin" ||
+            Boolean(
+              await prisma.boardMembership.findFirst({
+                where: { userId: payload.id, boardId, isDeleted: false },
+                select: { id: true },
+              }),
+            ));
+        if (!hasBoardGrant) {
           socket.close();
           return;
         }
@@ -206,7 +256,7 @@ class WsManager {
           where: {
             userId: payload.id,
             orgId: organizationId,
-            role: "admin",
+            role: { in: ["admin", "superadmin"] },
             isDeleted: false,
             organization: { isDeleted: false },
           },
@@ -262,7 +312,7 @@ class WsManager {
             where: {
               userId: payload.id,
               orgId: organizationId,
-              role: "admin",
+              role: { in: ["admin", "superadmin"] },
               isDeleted: false,
               organization: { isDeleted: false },
             },
@@ -271,7 +321,7 @@ class WsManager {
           prisma.membership.findMany({
             where: {
               orgId: organizationId,
-              role: "admin",
+              role: { in: ["admin", "superadmin"] },
               isDeleted: false,
               organization: { isDeleted: false },
             },
@@ -308,21 +358,34 @@ class WsManager {
           return;
         }
 
-        if (!this.boards[boardId]) {
+        if (!(await hasBoardAccess(payload.id, boardId))) {
+          socket.close();
           return;
         }
 
-        this.boards[boardId]
-          .filter((member) => member.socket !== socket)
-          .forEach((member) => {
-            member.socket.send(
-              JSON.stringify({
-                type: "issue_moved",
-                issueId: parsedData.issueId,
-                sectionId: parsedData.sectionId,
-              }),
-            );
-          });
+        if (
+          typeof parsedData.issueId !== "string" ||
+          typeof parsedData.sectionId !== "string"
+        ) {
+          return;
+        }
+        const issue = await prisma.issue.findFirst({
+          where: {
+            id: parsedData.issueId,
+            boardId,
+            sectionId: parsedData.sectionId,
+            isDeleted: false,
+            section: { isDeleted: false },
+          },
+          select: { id: true },
+        });
+        if (!issue) return;
+
+        await this.broadcastToBoard(boardId, socket, {
+          type: "issue_moved",
+          issueId: issue.id,
+          sectionId: parsedData.sectionId,
+        });
       } else if (parsedData.type === "board_changed") {
         // Tell other members to refresh after a board-level change.
         const boardId = this.joinedRooms.get(socket);
@@ -330,19 +393,45 @@ class WsManager {
           return;
         }
 
-        if (!this.boards[boardId]) {
+        if (!(await hasBoardAccess(payload.id, boardId))) {
+          socket.close();
           return;
         }
 
-        this.boards[boardId]
-          .filter((member) => member.socket !== socket)
-          .forEach((member) => {
-            member.socket.send(JSON.stringify({ type: "board_changed" }));
-          });
+        await this.broadcastToBoard(boardId, socket, {
+          type: "board_changed",
+        });
       }
     } catch (error) {
       console.error("Failed to handle message:", error);
     }
+  }
+
+  private async broadcastToBoard(
+    boardId: string,
+    sender: WebSocket,
+    message: Record<string, unknown>,
+  ) {
+    const members = this.boards[boardId] ?? [];
+    const recipients = await Promise.all(
+      members.map(async (member) => ({
+        member,
+        canAccess:
+          member.socket.readyState === WebSocket.OPEN &&
+          (await hasBoardAccess(member.id, boardId)),
+      })),
+    );
+
+    recipients.forEach(({ member, canAccess }) => {
+      if (member.socket === sender) return;
+      if (!canAccess) {
+        if (member.socket.readyState === WebSocket.OPEN) {
+          member.socket.close();
+        }
+        return;
+      }
+      member.socket.send(JSON.stringify(message));
+    });
   }
 
   private handleDisconnect(socket: WebSocket) {
