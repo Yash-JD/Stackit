@@ -29,6 +29,7 @@ export function BoardToolbar({
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
             placeholder="Search cards"
+            aria-label="Search cards"
           />
         </div>
         <div className="filter-wrap">

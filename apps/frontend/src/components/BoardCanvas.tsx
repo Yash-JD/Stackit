@@ -5,7 +5,16 @@ import {
   type DragEvent,
   type FormEvent,
 } from "react";
-import { Check, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Check,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
 import type { BoardColumn, Card } from "../types";
 import {
   createIssueComment,
@@ -19,6 +28,7 @@ import {
 
 type BoardCanvasProps = {
   columns: BoardColumn[];
+  canReorder: boolean;
   onAddCard: (columnId: string) => void;
   onSelectCard: (card: Card) => void;
   onEditCard: (card: Card) => void;
@@ -42,6 +52,7 @@ type BoardCanvasProps = {
 
 export function BoardCanvas({
   columns,
+  canReorder,
   onAddCard,
   onSelectCard,
   onEditCard,
@@ -72,7 +83,10 @@ export function BoardCanvas({
       <div className="board-summary">
         <span>{cardCount} cards</span>
         <span className="summary-separator" />
-        <span>Drag cards to move them or change their order</span>
+        <span>
+          Drag cards, or use the card actions to move and reorder with a
+          keyboard
+        </span>
       </div>
       {moveError && (
         <p className="board-move-error" role="alert">
@@ -80,10 +94,18 @@ export function BoardCanvas({
         </p>
       )}
       <div className="columns-row">
+        {columns.length === 0 && (
+          <p className="empty-board-message">
+            This board does not have any lists yet.
+          </p>
+        )}
         {columns.map((column) => (
           <BoardColumnView
             key={column.id}
             column={column}
+            columns={columns}
+            canReorder={canReorder}
+            onMoveCard={onMoveCard}
             onAddCard={onAddCard}
             onSelectCard={onSelectCard}
             onEditCard={onEditCard}
@@ -179,6 +201,9 @@ export function BoardCanvas({
 
 function BoardColumnView({
   column,
+  columns,
+  canReorder,
+  onMoveCard,
   onAddCard,
   onSelectCard,
   onEditCard,
@@ -194,6 +219,9 @@ function BoardColumnView({
   onCardDrop,
 }: {
   column: BoardColumn;
+  columns: BoardColumn[];
+  canReorder: boolean;
+  onMoveCard: BoardCanvasProps["onMoveCard"];
   onAddCard: (columnId: string) => void;
   onSelectCard: (card: Card) => void;
   onEditCard: (card: Card) => void;
@@ -211,6 +239,8 @@ function BoardColumnView({
   return (
     <section
       className={`board-column ${isDropTarget ? "board-column-drop-target" : ""}`}
+      aria-label={`${column.title} list`}
+      role="region"
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
@@ -232,7 +262,10 @@ function BoardColumnView({
         </button>
       </div>
       <div className="card-list">
-        {column.cards.map((card) => (
+        {column.cards.length === 0 && (
+          <p className="empty-list-message">No cards in this list yet.</p>
+        )}
+        {column.cards.map((card, cardIndex) => (
           <article
             className={`task-card ${
               draggedCardId === card.id ? "task-card-dragging" : ""
@@ -253,6 +286,72 @@ function BoardColumnView({
             onDrop={(event) => onCardDrop(event, card.id)}
           >
             <div className="task-card-actions">
+              {canReorder && (
+                <>
+                  <button
+                    type="button"
+                    className="icon-button"
+                    aria-label={`Move ${card.title} up`}
+                    title="Move up"
+                    disabled={
+                      cardIndex === 0 || pendingMoveIds.includes(card.id)
+                    }
+                    onClick={() =>
+                      onMoveCard(
+                        card.id,
+                        column.id,
+                        column.id,
+                        column.cards[cardIndex - 1]?.id ?? null,
+                      )
+                    }
+                  >
+                    <ArrowUp size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-button"
+                    aria-label={`Move ${card.title} down`}
+                    title="Move down"
+                    disabled={
+                      cardIndex === column.cards.length - 1 ||
+                      pendingMoveIds.includes(card.id)
+                    }
+                    onClick={() =>
+                      onMoveCard(
+                        card.id,
+                        column.id,
+                        column.id,
+                        column.cards[cardIndex + 2]?.id ?? null,
+                      )
+                    }
+                  >
+                    <ArrowDown size={14} />
+                  </button>
+                </>
+              )}
+              {columns.length > 1 && (
+                <select
+                  className="task-card-move-select"
+                  aria-label={`Move ${card.title} to another list`}
+                  value=""
+                  disabled={pendingMoveIds.includes(card.id)}
+                  onChange={(event) => {
+                    const targetColumnId = event.target.value;
+                    if (targetColumnId) {
+                      onMoveCard(card.id, column.id, targetColumnId, null);
+                    }
+                  }}
+                >
+                  <option value="">Move to…</option>
+                  {columns
+                    .filter((targetColumn) => targetColumn.id !== column.id)
+                    .map((targetColumn) => (
+                      <option key={targetColumn.id} value={targetColumn.id}>
+                        {targetColumn.title}
+                      </option>
+                    ))}
+                </select>
+              )}
               <button
                 type="button"
                 className="icon-button"

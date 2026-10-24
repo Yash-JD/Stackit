@@ -68,6 +68,9 @@ bun run start
   state where implemented to avoid reloading every card/list.
 - Card moves and within-list reordering are optimistic and roll back when the
   API rejects the move; the API persists positions.
+- Keyboard-accessible card actions can move cards between lists and reorder
+  them when the board is not filtered. Empty boards and lists, plus board load
+  failures, provide explanatory feedback and retry actions.
 - Board pages join an authenticated WebSocket room, display active
   collaborators and connection state, and retry after bounded reconnect
   attempts. Retry is available from the connection status control.
@@ -94,9 +97,11 @@ bun run start
 
 ## Validation and documentation
 
-Type-check and production-build from the repository root:
+Run the repository's Bun test suite and type-check/build from the repository
+root:
 
 ```bash
+bun test
 bunx tsc --noEmit -p apps/frontend/tsconfig.json
 bun run --cwd apps/frontend build
 ```

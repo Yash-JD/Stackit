@@ -513,6 +513,7 @@ function Board() {
     socketStatus,
     retryBoardSocket,
     notifyBoardChanged,
+    refresh: refreshBoard,
     addSection,
     createCard,
     updateCard,
@@ -679,7 +680,7 @@ function Board() {
 
   return (
     <>
-      <main className="board-shell">
+      <main className="board-shell" aria-busy={isLoadingBoard}>
         <BoardTopbar
           boardTitle={boardTitle}
           onMenuClick={toggleSidebar}
@@ -695,14 +696,24 @@ function Board() {
           onFilterChange={setActiveFilter}
         />
         {isLoadingBoard ? (
-          <div className="board-state">Loading board...</div>
+          <div className="board-state" role="status" aria-live="polite">
+            Loading board…
+          </div>
         ) : boardError ? (
           <div className="board-state board-state-error" role="alert">
-            {boardError}
+            <p>{boardError}</p>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => void refreshBoard()}
+            >
+              Try again
+            </button>
           </div>
         ) : (
           <BoardCanvas
             columns={visibleColumns}
+            canReorder={query.trim() === "" && activeFilter === "all"}
             onMoveCard={(
               cardId,
               sourceColumnId,

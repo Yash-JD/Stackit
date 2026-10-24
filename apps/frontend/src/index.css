@@ -981,6 +981,9 @@ button {
 .board-state-error {
   color: #f0b7a9;
 }
+.board-state-error p {
+  margin: 0 0 12px;
+}
 .topbar {
   display: flex;
   align-items: center;
@@ -1261,6 +1264,12 @@ button {
   gap: 15px;
   min-width: max-content;
 }
+.empty-board-message {
+  padding: 18px;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 9px;
+  color: #aab9b7;
+}
 .board-column {
   width: 275px;
   flex: 0 0 275px;
@@ -1319,6 +1328,15 @@ button {
   display: grid;
   gap: 9px;
 }
+.empty-list-message {
+  margin: 0;
+  padding: 14px 10px;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: #87989a;
+  font-size: 12px;
+  text-align: center;
+}
 .task-card {
   position: relative;
   display: block;
@@ -1353,7 +1371,7 @@ button {
 .task-card-open {
   display: block;
   width: 100%;
-  padding: 14px;
+  padding: 48px 14px 14px;
   border: 0;
   color: inherit;
   background: transparent;
@@ -1384,6 +1402,28 @@ button {
 .task-card-actions .icon-button {
   width: 27px;
   height: 27px;
+}
+.task-card-actions .icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+.task-card-move-select {
+  width: 66px;
+  max-width: 66px;
+  padding: 4px 3px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #aab9b7;
+  background: #202d30;
+  cursor: pointer;
+  font-size: 10px;
+}
+.task-card-move-select:focus-visible {
+  outline: 2px solid #a9e1d2;
+}
+.task-card-move-select option {
+  color: #edf7f3;
+  background: #10191b;
 }
 .task-card-actions .icon-button.danger:hover {
   color: #ffaaaa;
