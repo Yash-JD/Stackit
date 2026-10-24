@@ -57,13 +57,17 @@ export const SectionUpdateSchema = z.object({
 export const IssueSchema = z.object({
   title: z.string().min(1),
   description: z.string(),
+  label: z.enum(["Design", "Build", "Research"]).default("Build"),
+  dueDate: z.iso.date().nullable().optional(),
 });
 
 export const UpdateIssueSchema = z.object({
   title: z.string().min(1).optional(),
   description: z.string().optional(),
+  label: z.enum(["Design", "Build", "Research"]).optional(),
+  dueDate: z.iso.date().nullable().optional(),
 });
 
 export const CommentsSchema = z.object({
-  comment: z.string().min(1),
+  comment: z.string().trim().min(1).max(4000),
 });

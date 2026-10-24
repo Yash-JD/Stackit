@@ -40,22 +40,28 @@ router.post(
       });
     }
 
-    const comment = await prisma.comments.create({
-      data: {
-        issueId: issueId,
-        comment: data.comment,
-        userId: userId,
-      },
-      include: {
-        user: {
-          select: { id: true, email: true, profilePhoto: true },
+    const comment = await prisma.$transaction(async (transaction) => {
+      const createdComment = await transaction.comments.create({
+        data: {
+          issueId,
+          comment: data.comment,
+          userId,
         },
-      },
+        include: {
+          user: {
+            select: { id: true, email: true, profilePhoto: true },
+          },
+        },
+      });
+      await transaction.issueActivity.create({
+        data: { issueId, actorId: userId, action: "commented" },
+      });
+      return createdComment;
     });
 
     return res.status(200).json({
       success: true,
-      data: comment,
+      data: { ...comment, isAuthor: true },
     });
   },
 );
@@ -105,13 +111,19 @@ router.put(
       });
     }
 
-    const comments = await prisma.comments.update({
-      where: {
-        id: commentId,
-      },
-      data: {
-        comment: data.comment,
-      },
+    const comments = await prisma.$transaction(async (transaction) => {
+      const updatedComment = await transaction.comments.update({
+        where: { id: commentId },
+        data: { comment: data.comment },
+      });
+      await transaction.issueActivity.create({
+        data: {
+          issueId: comment.issueId,
+          actorId: userId,
+          action: "comment_edited",
+        },
+      });
+      return updatedComment;
     });
 
     return res.status(200).json({
@@ -139,6 +151,8 @@ router.get(
       },
       include: {
         comments: {
+          where: { isDeleted: false },
+          orderBy: { createdAt: "asc" },
           include: {
             user: {
               select: { id: true, email: true, profilePhoto: true },
@@ -157,7 +171,10 @@ router.get(
 
     return res.status(200).json({
       success: true,
-      data: issue.comments,
+      data: issue.comments.map((comment) => ({
+        ...comment,
+        isAuthor: comment.userId === userId,
+      })),
     });
   },
 );
@@ -200,10 +217,18 @@ router.delete(
       });
     }
 
-    await prisma.comments.delete({
-      where: {
-        id: commentId,
-      },
+    await prisma.$transaction(async (transaction) => {
+      await transaction.comments.update({
+        where: { id: commentId },
+        data: { isDeleted: true },
+      });
+      await transaction.issueActivity.create({
+        data: {
+          issueId: comment.issueId,
+          actorId: userId,
+          action: "comment_deleted",
+        },
+      });
     });
 
     return res.status(200).json({

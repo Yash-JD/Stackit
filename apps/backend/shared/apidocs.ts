@@ -512,6 +512,19 @@ const apiDocument = {
         },
       },
     },
+    "/api/v1/activity/{issueId}": {
+      parameters: [{ $ref: "#/components/parameters/IssueId" }],
+      get: {
+        tags: ["Issues"],
+        security: [{ bearerAuth: [] }],
+        summary: "List activity for an issue",
+        responses: {
+          "200": { description: "Activity returned" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "404": { $ref: "#/components/responses/NotFound" },
+        },
+      },
+    },
     "/api/v1/comment/{issueId}": {
       parameters: [{ $ref: "#/components/parameters/IssueId" }],
       post: {
@@ -778,6 +791,8 @@ const apiDocument = {
         properties: {
           title: { type: "string", minLength: 1 },
           description: { type: "string" },
+          label: { type: "string", enum: ["Design", "Build", "Research"] },
+          dueDate: { type: "string", format: "date", nullable: true },
         },
       },
       IssueUpdateRequest: {
@@ -785,12 +800,16 @@ const apiDocument = {
         properties: {
           title: { type: "string", minLength: 1 },
           description: { type: "string" },
+          label: { type: "string", enum: ["Design", "Build", "Research"] },
+          dueDate: { type: "string", format: "date", nullable: true },
         },
       },
       CommentRequest: {
         type: "object",
         required: ["comment"],
-        properties: { comment: { type: "string", minLength: 1 } },
+        properties: {
+          comment: { type: "string", minLength: 1, maxLength: 4000 },
+        },
       },
       HealthResponse: {
         type: "object",

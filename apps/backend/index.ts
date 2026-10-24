@@ -9,6 +9,7 @@ import boardRouter from "./src/board";
 import sectionRouter from "./src/section";
 import issueRouter from "./src/issue";
 import commentRouter from "./src/comment";
+import activityRouter from "./src/activity";
 import { errorHandler } from "./helper/errorHandler";
 import { checkDatabaseConnection } from "./shared/checkDBhealth";
 
@@ -44,6 +45,7 @@ app.use(boardRouter);
 app.use(sectionRouter);
 app.use(issueRouter);
 app.use(commentRouter);
+app.use(activityRouter);
 
 app.use(errorHandler);
 

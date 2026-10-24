@@ -47,13 +47,27 @@ router.post(
       });
     }
 
-    const issue = await prisma.issue.create({
-      data: {
-        title: data.title,
-        description: data.description,
-        sectionId: section.id,
-        boardId: section.boardId,
-      },
+    const issue = await prisma.$transaction(async (transaction) => {
+      const createdIssue = await transaction.issue.create({
+        data: {
+          title: data.title,
+          description: data.description,
+          label: data.label,
+          dueDate: data.dueDate
+            ? new Date(`${data.dueDate}T00:00:00.000Z`)
+            : null,
+          sectionId: section.id,
+          boardId: section.boardId,
+        },
+      });
+      await transaction.issueActivity.create({
+        data: {
+          issueId: createdIssue.id,
+          actorId: userId,
+          action: "created",
+        },
+      });
+      return createdIssue;
     });
 
     return res.status(200).json({
@@ -128,7 +142,14 @@ router.put(
         section: { isDeleted: false },
         board: { isDeleted: false, organization: { isDeleted: false } },
       },
-      select: { id: true, boardId: true },
+      select: {
+        id: true,
+        boardId: true,
+        title: true,
+        description: true,
+        label: true,
+        dueDate: true,
+      },
     });
 
     if (!existingIssue) {
@@ -144,14 +165,50 @@ router.put(
       });
     }
 
-    const issue = await prisma.issue.update({
-      where: {
-        id: issueId,
-      },
-      data: {
-        title: data.title,
-        description: data.description,
-      },
+    const changedFields = [
+      data.title !== undefined && data.title !== existingIssue.title
+        ? "title"
+        : null,
+      data.description !== undefined &&
+      data.description !== existingIssue.description
+        ? "description"
+        : null,
+      data.label !== undefined && data.label !== existingIssue.label
+        ? "label"
+        : null,
+      data.dueDate !== undefined &&
+      (data.dueDate
+        ? new Date(`${data.dueDate}T00:00:00.000Z`).getTime()
+        : null) !== (existingIssue.dueDate?.getTime() ?? null)
+        ? "due date"
+        : null,
+    ].filter((field): field is string => field !== null);
+
+    const issue = await prisma.$transaction(async (transaction) => {
+      const updatedIssue = await transaction.issue.update({
+        where: { id: issueId },
+        data: {
+          title: data.title,
+          description: data.description,
+          label: data.label,
+          ...(data.dueDate !== undefined && {
+            dueDate: data.dueDate
+              ? new Date(`${data.dueDate}T00:00:00.000Z`)
+              : null,
+          }),
+        },
+      });
+      if (changedFields.length > 0) {
+        await transaction.issueActivity.create({
+          data: {
+            issueId,
+            actorId: userId,
+            action: "updated",
+            details: changedFields.join(", "),
+          },
+        });
+      }
+      return updatedIssue;
     });
 
     return res.status(200).json({
@@ -260,6 +317,7 @@ router.put(
       select: {
         id: true,
         boardId: true,
+        section: { select: { title: true } },
       },
     });
 
@@ -291,13 +349,20 @@ router.put(
       });
     }
 
-    const updatedIssue = await prisma.issue.update({
-      where: {
-        id: issueId,
-      },
-      data: {
-        sectionId: newSectionId,
-      },
+    const updatedIssue = await prisma.$transaction(async (transaction) => {
+      const movedIssue = await transaction.issue.update({
+        where: { id: issueId },
+        data: { sectionId: newSectionId },
+      });
+      await transaction.issueActivity.create({
+        data: {
+          issueId,
+          actorId: userId,
+          action: "moved",
+          details: `${issue.section.title} to ${section.title}`,
+        },
+      });
+      return movedIssue;
     });
 
     return res.status(200).json({
