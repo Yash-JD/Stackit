@@ -135,8 +135,18 @@ export type IssueActivity = {
   actor: {
     id: string;
     email: string;
+    name?: string | null;
     profilePhoto: string | null;
   } | null;
+  issue?: {
+    id: string;
+    title: string;
+    boardId?: string;
+    board?: {
+      id: string;
+      title: string;
+    };
+  };
 };
 
 export type OrganizationMember = {
@@ -693,6 +703,17 @@ export async function deleteIssueComment(commentId: string) {
 export async function getIssueActivity(issueId: string) {
   const response = await apiRequest<{ activities: IssueActivity[] }>(
     `/api/v1/activity/${encodeURIComponent(issueId)}`,
+    { authenticated: true },
+  );
+  if (!Array.isArray(response.data?.activities)) {
+    throw new Error("The server returned an invalid activity response");
+  }
+  return response.data.activities;
+}
+
+export async function getOrganizationActivity(orgId: string) {
+  const response = await apiRequest<{ activities: IssueActivity[] }>(
+    `/api/v1/organization/${encodeURIComponent(orgId)}/activity`,
     { authenticated: true },
   );
   if (!Array.isArray(response.data?.activities)) {
