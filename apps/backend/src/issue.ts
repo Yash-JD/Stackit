@@ -5,6 +5,7 @@ import { prisma } from "db/client";
 import { authMiddleware } from "../helper/authMiddleware";
 import { hasBoardAccess } from "../helper/hasRole";
 import { orderIssueMove } from "./issueOrdering";
+import { COMMON_ERRORS, SECTION_ERRORS, ISSUE_ERRORS } from "../helper/errors";
 
 const router = express.Router();
 
@@ -30,13 +31,13 @@ router.post(
     if (!section) {
       return res.status(404).json({
         success: false,
-        error: "SECTION_NOT_FOUND",
+        error: SECTION_ERRORS.SECTION_NOT_FOUND,
       });
     }
     if (!(await hasBoardAccess(userId, section.boardId))) {
       return res.status(403).json({
         success: false,
-        error: "UNAUTHORIZED",
+        error: COMMON_ERRORS.UNAUTHORIZED,
       });
     }
 
@@ -44,7 +45,7 @@ router.post(
     if (!success) {
       return res.status(400).json({
         success: false,
-        error: "INVALID_REQUEST",
+        error: COMMON_ERRORS.INVALID_REQUEST,
       });
     }
 
@@ -113,13 +114,13 @@ router.get(
     if (!section) {
       return res.status(404).json({
         success: false,
-        error: "SECTION_NOT_FOUND",
+        error: SECTION_ERRORS.SECTION_NOT_FOUND,
       });
     }
     if (!(await hasBoardAccess(userId, section.boardId))) {
       return res.status(403).json({
         success: false,
-        error: "UNAUTHORIZED",
+        error: COMMON_ERRORS.UNAUTHORIZED,
       });
     }
 
@@ -146,7 +147,7 @@ router.put(
     if (!success) {
       return res.status(400).json({
         success: false,
-        error: "INVALID_REQUEST",
+        error: COMMON_ERRORS.INVALID_REQUEST,
       });
     }
 
@@ -170,13 +171,13 @@ router.put(
     if (!existingIssue) {
       return res.status(404).json({
         success: false,
-        error: "ISSUE_NOT_FOUND",
+        error: ISSUE_ERRORS.ISSUE_NOT_FOUND,
       });
     }
     if (!(await hasBoardAccess(userId, existingIssue.boardId))) {
       return res.status(403).json({
         success: false,
-        error: "UNAUTHORIZED",
+        error: COMMON_ERRORS.UNAUTHORIZED,
       });
     }
 
@@ -252,13 +253,13 @@ router.get(
     if (!issue) {
       return res.status(404).json({
         success: false,
-        error: "ISSUE_NOT_FOUND",
+        error: ISSUE_ERRORS.ISSUE_NOT_FOUND,
       });
     }
     if (!(await hasBoardAccess(userId, issue.boardId))) {
       return res.status(403).json({
         success: false,
-        error: "UNAUTHORIZED",
+        error: COMMON_ERRORS.UNAUTHORIZED,
       });
     }
 
@@ -288,13 +289,13 @@ router.delete(
     if (!issue) {
       return res.status(404).json({
         success: false,
-        error: "ISSUE_NOT_FOUND",
+        error: ISSUE_ERRORS.ISSUE_NOT_FOUND,
       });
     }
     if (!(await hasBoardAccess(userId, issue.boardId))) {
       return res.status(403).json({
         success: false,
-        error: "UNAUTHORIZED",
+        error: COMMON_ERRORS.UNAUTHORIZED,
       });
     }
 
@@ -326,7 +327,7 @@ router.put(
     if (!success) {
       return res.status(400).json({
         success: false,
-        error: "INVALID_REQUEST",
+        error: COMMON_ERRORS.INVALID_REQUEST,
       });
     }
 
@@ -348,13 +349,13 @@ router.put(
     if (!issue) {
       return res.status(404).json({
         success: false,
-        error: "ISSUE_NOT_FOUND",
+        error: ISSUE_ERRORS.ISSUE_NOT_FOUND,
       });
     }
     if (!(await hasBoardAccess(userId, issue.boardId))) {
       return res.status(403).json({
         success: false,
-        error: "UNAUTHORIZED",
+        error: COMMON_ERRORS.UNAUTHORIZED,
       });
     }
 
@@ -369,7 +370,7 @@ router.put(
     if (!section) {
       return res.status(404).json({
         success: false,
-        error: "SECTION_NOT_FOUND",
+        error: SECTION_ERRORS.SECTION_NOT_FOUND,
       });
     }
 

@@ -4,6 +4,7 @@ import { prisma } from "db/client";
 
 import { authMiddleware } from "../helper/authMiddleware";
 import { hasRole } from "../helper/hasRole";
+import { COMMON_ERRORS, ORG_ERRORS, BOARD_ERRORS } from "../helper/errors";
 
 const router = express.Router();
 
@@ -16,7 +17,7 @@ router.get(
     if (!orgId) {
       return res.status(400).json({
         success: false,
-        error: "PLEASE_PROVIDE_ORGID",
+        error: ORG_ERRORS.PLEASE_PROVIDE_ORGID,
       });
     }
 
@@ -31,7 +32,7 @@ router.get(
     if (!membership) {
       return res.status(403).json({
         success: false,
-        error: "UNAUTHORIZED",
+        error: COMMON_ERRORS.UNAUTHORIZED,
       });
     }
 
@@ -68,7 +69,7 @@ router.post(
     if (!success) {
       return res.status(400).json({
         success: false,
-        error: "INVALID_DATA",
+        error: COMMON_ERRORS.INVALID_DATA,
       });
     }
     const userId = req.id;
@@ -76,7 +77,7 @@ router.post(
     if (!(await hasRole(userId, data.orgId, "admin"))) {
       return res.status(400).json({
         success: false,
-        error: "NOT_AUTHENTICATED_TO_CREATE_ORG",
+        error: ORG_ERRORS.NOT_AUTHENTICATED_TO_CREATE_ORG,
       });
     }
 
@@ -102,7 +103,7 @@ router.delete(
     if (!boardId) {
       return res.status(400).json({
         success: false,
-        error: "PLEASE_PROVIDE_BOARD_ID",
+        error: BOARD_ERRORS.PLEASE_PROVIDE_BOARD_ID,
       });
     }
 
@@ -117,14 +118,14 @@ router.delete(
     if (!board) {
       return res.status(404).json({
         success: false,
-        error: "BOARD_NOT_FOUND",
+        error: BOARD_ERRORS.BOARD_NOT_FOUND,
       });
     }
 
     if (!(await hasRole(userId, board.orgId, "admin"))) {
       return res.status(400).json({
         success: false,
-        error: "NOT_AUTHENTICATED_TO_CREATE_ORG",
+        error: ORG_ERRORS.NOT_AUTHENTICATED_TO_CREATE_ORG,
       });
     }
 
@@ -153,7 +154,7 @@ router.put(
     if (!success) {
       return res.status(400).json({
         success: false,
-        error: "INVALID_DATA",
+        error: COMMON_ERRORS.INVALID_DATA,
       });
     }
 
@@ -168,14 +169,14 @@ router.put(
     if (!board) {
       return res.status(404).json({
         success: false,
-        error: "BOARD_NOT_FOUND",
+        error: BOARD_ERRORS.BOARD_NOT_FOUND,
       });
     }
 
     if (!(await hasRole(userId, board.orgId, "admin"))) {
       return res.status(400).json({
         success: false,
-        error: "NOT_AUTHENTICATED_TO_CREATE_ORG",
+        error: ORG_ERRORS.NOT_AUTHENTICATED_TO_CREATE_ORG,
       });
     }
 

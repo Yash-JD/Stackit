@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import jwt, { type JwtPayload } from "jsonwebtoken";
+import { COMMON_ERRORS } from "./errors";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -24,7 +25,7 @@ export const authMiddleware = (
     if (!token) {
       return res.status(401).json({
         success: false,
-        error: "UNAUTHORIZED",
+        error: COMMON_ERRORS.UNAUTHORIZED,
       });
     }
     const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
@@ -33,7 +34,7 @@ export const authMiddleware = (
   } catch (e: any) {
     return res.status(401).json({
       success: false,
-      error: "UNAUTHORIZED",
+      error: COMMON_ERRORS.UNAUTHORIZED,
     });
   }
 };

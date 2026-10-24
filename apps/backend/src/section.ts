@@ -4,6 +4,12 @@ import { prisma } from "db/client";
 
 import { authMiddleware } from "../helper/authMiddleware";
 import { hasRole } from "../helper/hasRole";
+import {
+  COMMON_ERRORS,
+  ORG_ERRORS,
+  BOARD_ERRORS,
+  SECTION_ERRORS,
+} from "../helper/errors";
 
 const router = express.Router();
 
@@ -15,7 +21,7 @@ router.post(
     if (!success) {
       return res.status(400).json({
         success: false,
-        error: "INVALID_REQUEST",
+        error: COMMON_ERRORS.INVALID_REQUEST,
       });
     }
 
@@ -30,14 +36,14 @@ router.post(
     if (!board) {
       return res.status(404).json({
         success: false,
-        error: "BOARD_NOT_FOUND",
+        error: BOARD_ERRORS.BOARD_NOT_FOUND,
       });
     }
 
     if (!(await hasRole(userId, board.orgId, "admin"))) {
       return res.status(400).json({
         success: false,
-        error: "NOT_AUTHENTICATED_TO_CREATE_ORG",
+        error: ORG_ERRORS.NOT_AUTHENTICATED_TO_CREATE_ORG,
       });
     }
 
@@ -63,7 +69,7 @@ router.put(
     if (!success) {
       return res.status(400).json({
         success: false,
-        error: "INVALID_REQUEST",
+        error: COMMON_ERRORS.INVALID_REQUEST,
       });
     }
 
@@ -71,7 +77,7 @@ router.put(
     if (!sectionId) {
       return res.status(400).json({
         success: false,
-        error: "PLEASE_PROVIDE_SECTION_ID",
+        error: SECTION_ERRORS.PLEASE_PROVIDE_SECTION_ID,
       });
     }
     const userId = req.id;
@@ -88,14 +94,14 @@ router.put(
     if (!existingSection) {
       return res.status(404).json({
         success: false,
-        error: "SECTION_NOT_FOUND",
+        error: SECTION_ERRORS.SECTION_NOT_FOUND,
       });
     }
 
     if (!(await hasRole(userId, existingSection.board.orgId, "admin"))) {
       return res.status(400).json({
         success: false,
-        error: "NOT_AUTHENTICATED_TO_CREATE_ORG",
+        error: ORG_ERRORS.NOT_AUTHENTICATED_TO_CREATE_ORG,
       });
     }
 
@@ -125,7 +131,7 @@ router.get(
     if (!orgId) {
       return res.status(400).json({
         success: false,
-        error: "PLEASE_PROVIDE_ORGID",
+        error: ORG_ERRORS.PLEASE_PROVIDE_ORGID,
       });
     }
 
@@ -140,7 +146,7 @@ router.get(
     if (!membership) {
       return res.status(403).json({
         success: false,
-        error: "UNAUTHORIZED",
+        error: COMMON_ERRORS.UNAUTHORIZED,
       });
     }
     const boards = await prisma.boards.findMany({
@@ -181,7 +187,7 @@ router.delete(
     if (!sectionId) {
       return res.status(400).json({
         success: false,
-        error: "PLEASE_PROVIDE_SECTION_ID",
+        error: SECTION_ERRORS.PLEASE_PROVIDE_SECTION_ID,
       });
     }
 
@@ -197,14 +203,14 @@ router.delete(
     if (!existingSection) {
       return res.status(404).json({
         success: false,
-        error: "SECTION_NOT_FOUND",
+        error: SECTION_ERRORS.SECTION_NOT_FOUND,
       });
     }
 
     if (!(await hasRole(userId, existingSection.board.orgId, "admin"))) {
       return res.status(400).json({
         success: false,
-        error: "NOT_AUTHENTICATED_TO_CREATE_ORG",
+        error: ORG_ERRORS.NOT_AUTHENTICATED_TO_CREATE_ORG,
       });
     }
 

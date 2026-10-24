@@ -5,6 +5,7 @@ import { prisma } from "db/client";
 import { authMiddleware } from "../helper/authMiddleware";
 import { hasRole } from "../helper/hasRole";
 import { Role } from "../../../packages/db/generated/prisma/enums";
+import { COMMON_ERRORS, ORG_ERRORS } from "../helper/errors";
 
 const router = express.Router();
 
@@ -17,7 +18,7 @@ router.post(
     if (!success) {
       return res.status(400).json({
         success: false,
-        error: "INVALID_REQUEST",
+        error: COMMON_ERRORS.INVALID_REQUEST,
       });
     }
     const userId = req.id;
@@ -58,7 +59,7 @@ router.put(
     if (!success) {
       return res.status(400).json({
         success: false,
-        error: "INVALID_REQUEST",
+        error: COMMON_ERRORS.INVALID_REQUEST,
       });
     }
 
@@ -66,7 +67,7 @@ router.put(
     if (!orgId) {
       return res.status(400).json({
         success: false,
-        error: "PLEASE_PROVIDE_ORGID",
+        error: ORG_ERRORS.PLEASE_PROVIDE_ORGID,
       });
     }
 
@@ -75,7 +76,7 @@ router.put(
     if (!(await hasRole(userId, orgId, "superadmin"))) {
       return res.status(403).json({
         success: false,
-        error: "UNAUTHORIZED_ONLY_SUPERADMIN_CAN_EDIT_WORKSPACE",
+        error: ORG_ERRORS.UNAUTHORIZED_ONLY_SUPERADMIN_CAN_EDIT_WORKSPACE,
       });
     }
     const org = await prisma.organization.update({
@@ -134,7 +135,7 @@ router.get(
     if (!orgId) {
       return res.status(400).json({
         success: false,
-        error: "PLEASE_PROVIDE_ORGID",
+        error: ORG_ERRORS.PLEASE_PROVIDE_ORGID,
       });
     }
     const userId = req.id;
@@ -167,7 +168,7 @@ router.delete(
     if (!orgId) {
       return res.status(400).json({
         success: false,
-        error: "PLEASE_PROVIDE_ORGID",
+        error: ORG_ERRORS.PLEASE_PROVIDE_ORGID,
       });
     }
     const userId = req.id;
@@ -175,7 +176,7 @@ router.delete(
     if (!(await hasRole(userId, orgId, "superadmin"))) {
       return res.status(403).json({
         success: false,
-        error: "UNAUTHORIZED_ONLY_SUPERADMIN_CAN_DELETE_WORKSPACE",
+        error: ORG_ERRORS.UNAUTHORIZED_ONLY_SUPERADMIN_CAN_DELETE_WORKSPACE,
       });
     }
 

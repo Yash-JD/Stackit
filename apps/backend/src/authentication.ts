@@ -4,6 +4,7 @@ import { prisma } from "db/client";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { authMiddleware } from "../helper/authMiddleware";
+import { COMMON_ERRORS, AUTH_ERRORS } from "../helper/errors";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -27,7 +28,7 @@ router.get(
       },
     });
     if (!user) {
-      return res.status(404).json({ success: false, error: "USER_NOT_FOUND" });
+      return res.status(404).json({ success: false, error: AUTH_ERRORS.USER_NOT_FOUND });
     }
 
     return res.status(200).json({
@@ -49,7 +50,7 @@ router.put(
     if (!success) {
       return res.status(400).json({
         success: false,
-        error: "INVALID_PROFILE",
+        error: AUTH_ERRORS.INVALID_PROFILE,
       });
     }
 
@@ -62,7 +63,7 @@ router.put(
       },
     });
     if (user.count === 0) {
-      return res.status(404).json({ success: false, error: "USER_NOT_FOUND" });
+      return res.status(404).json({ success: false, error: AUTH_ERRORS.USER_NOT_FOUND });
     }
 
     const updatedProfile = await prisma.user.findUnique({
@@ -76,7 +77,7 @@ router.put(
       },
     });
     if (!updatedProfile) {
-      return res.status(404).json({ success: false, error: "USER_NOT_FOUND" });
+      return res.status(404).json({ success: false, error: AUTH_ERRORS.USER_NOT_FOUND });
     }
 
     return res.status(200).json({
@@ -95,7 +96,7 @@ router.post("/api/v1/signup", async (req: Request, res: Response) => {
   if (!success) {
     return res.status(400).json({
       success: false,
-      error: "INVALID_REQUEST",
+      error: COMMON_ERRORS.INVALID_REQUEST,
     });
   }
 
@@ -108,7 +109,7 @@ router.post("/api/v1/signup", async (req: Request, res: Response) => {
   if (existingUser) {
     return res.status(400).json({
       success: false,
-      error: "user already exists please signin",
+      error: AUTH_ERRORS.USER_ALREADY_EXISTS,
     });
   }
 
@@ -134,7 +135,7 @@ router.post("/api/v1/signin", async (req: Request, res: Response) => {
   if (!success) {
     return res.status(400).json({
       success: false,
-      error: "INVALID_REQUEST",
+      error: COMMON_ERRORS.INVALID_REQUEST,
     });
   }
 
@@ -148,14 +149,14 @@ router.post("/api/v1/signin", async (req: Request, res: Response) => {
   if (!existingUser) {
     return res.status(400).json({
       success: false,
-      error: "USER_NOT_FOUND_PLEASE_SIGNUP",
+      error: AUTH_ERRORS.USER_NOT_FOUND_PLEASE_SIGNUP,
     });
   }
 
   if (!existingUser.password) {
     return res.status(400).json({
       success: false,
-      error: "SIGN_IN_WITH_GOOGLE_INSTEAD",
+      error: AUTH_ERRORS.SIGN_IN_WITH_GOOGLE_INSTEAD,
     });
   }
 
@@ -163,7 +164,7 @@ router.post("/api/v1/signin", async (req: Request, res: Response) => {
   if (!password) {
     return res.status(400).json({
       success: false,
-      error: "INCORRECT_PASSWORD",
+      error: AUTH_ERRORS.INCORRECT_PASSWORD,
     });
   }
   const token = jwt.sign(

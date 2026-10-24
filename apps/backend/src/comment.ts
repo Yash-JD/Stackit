@@ -4,6 +4,7 @@ import { prisma } from "db/client";
 
 import { authMiddleware } from "../helper/authMiddleware";
 import { hasBoardAccess } from "../helper/hasRole";
+import { COMMON_ERRORS, COMMENT_ERRORS } from "../helper/errors";
 
 const router = express.Router();
 
@@ -15,7 +16,7 @@ router.post(
     if (!success) {
       return res.status(400).json({
         success: false,
-        error: "INVALID_DATA",
+        error: COMMON_ERRORS.INVALID_DATA,
       });
     }
     const userId = req.id;
@@ -36,7 +37,7 @@ router.post(
     if (!issue || !(await hasBoardAccess(userId, issue.boardId))) {
       return res.status(403).json({
         success: false,
-        error: "UNAUTHORIZED",
+        error: COMMON_ERRORS.UNAUTHORIZED,
       });
     }
 
@@ -74,7 +75,7 @@ router.put(
     if (!success) {
       return res.status(400).json({
         success: false,
-        error: "INVALID_DATA",
+        error: COMMON_ERRORS.INVALID_DATA,
       });
     }
     const userId = req.id;
@@ -100,14 +101,14 @@ router.put(
     if (!comment || !(await hasBoardAccess(userId, comment.issue.boardId))) {
       return res.status(403).json({
         success: false,
-        error: "UNAUTHORIZED",
+        error: COMMON_ERRORS.UNAUTHORIZED,
       });
     }
 
     if (comment.userId !== userId) {
       return res.status(403).json({
         success: false,
-        error: "NOT_COMMENT_AUTHOR",
+        error: COMMENT_ERRORS.NOT_COMMENT_AUTHOR,
       });
     }
 
@@ -165,7 +166,7 @@ router.get(
     if (!issue || !(await hasBoardAccess(userId, issue.boardId))) {
       return res.status(403).json({
         success: false,
-        error: "UNAUTHORIZED",
+        error: COMMON_ERRORS.UNAUTHORIZED,
       });
     }
 
@@ -206,14 +207,14 @@ router.delete(
     if (!comment || !(await hasBoardAccess(userId, comment.issue.boardId))) {
       return res.status(403).json({
         success: false,
-        error: "UNAUTHORIZED",
+        error: COMMON_ERRORS.UNAUTHORIZED,
       });
     }
 
     if (comment.userId !== userId) {
       return res.status(403).json({
         success: false,
-        error: "NOT_COMMENT_AUTHOR",
+        error: COMMENT_ERRORS.NOT_COMMENT_AUTHOR,
       });
     }
 

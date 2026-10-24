@@ -11,6 +11,7 @@ import { hasRole } from "../helper/hasRole";
 import { sendInviteEmail } from "../helper/email";
 import { deliverInvitationEmail } from "../helper/invitationDelivery";
 import { getMembershipMutationBlockReason } from "../helper/membershipMutationPolicy";
+import { COMMON_ERRORS, MEMBER_ERRORS, AUTH_ERRORS } from "../helper/errors";
 
 const router = express.Router();
 
@@ -22,7 +23,7 @@ router.post(
     if (!success) {
       return res.status(400).json({
         success: false,
-        error: "INVALID_DATA",
+        error: COMMON_ERRORS.INVALID_DATA,
       });
     }
 
@@ -31,7 +32,7 @@ router.post(
     if (!(await hasRole(adminId, data.orgId, "superadmin"))) {
       return res.status(403).json({
         success: false,
-        error: "UNAUTHORIZED_ONLY_SUPERADMIN_CAN_INVITE",
+        error: MEMBER_ERRORS.UNAUTHORIZED_ONLY_SUPERADMIN_CAN_INVITE,
       });
     }
 
@@ -48,7 +49,7 @@ router.post(
     if (boards.length !== boardIds.length) {
       return res.status(400).json({
         success: false,
-        error: "INVALID_BOARD_ASSIGNMENT",
+        error: MEMBER_ERRORS.INVALID_BOARD_ASSIGNMENT,
       });
     }
 
@@ -70,7 +71,7 @@ router.post(
     ) {
       return res.status(400).json({
         success: false,
-        error: "ALREADY_WORKSPACE_MEMBER",
+        error: MEMBER_ERRORS.ALREADY_WORKSPACE_MEMBER,
       });
     }
 
@@ -86,7 +87,7 @@ router.post(
     if (existingInvitation) {
       return res.status(400).json({
         success: false,
-        error: "INVITATION_ALREADY_SENT",
+        error: MEMBER_ERRORS.INVITATION_ALREADY_SENT,
       });
     }
 
@@ -151,7 +152,7 @@ router.get(
     if (!user) {
       return res.status(404).json({
         success: false,
-        error: "USER_NOT_FOUND",
+        error: AUTH_ERRORS.USER_NOT_FOUND,
       });
     }
 
@@ -188,7 +189,7 @@ router.get(
     if (!(await hasRole(req.id, orgId, "admin"))) {
       return res.status(403).json({
         success: false,
-        error: "UNAUTHORIZED",
+        error: COMMON_ERRORS.UNAUTHORIZED,
       });
     }
 
@@ -237,7 +238,7 @@ router.post(
     if (!invite) {
       return res.status(404).json({
         success: false,
-        error: "INVITATION_NOT_FOUND",
+        error: MEMBER_ERRORS.INVITATION_NOT_FOUND,
       });
     }
 
@@ -251,7 +252,7 @@ router.post(
     if (user?.email.toLowerCase() !== invite.email.toLowerCase()) {
       return res.status(403).json({
         success: false,
-        error: "INVITATION_NOT_FOUND",
+        error: MEMBER_ERRORS.INVITATION_NOT_FOUND,
       });
     }
 
@@ -266,7 +267,7 @@ router.post(
     if (existingMembership) {
       return res.status(400).json({
         success: false,
-        error: "ALREADY_ADDED",
+        error: MEMBER_ERRORS.ALREADY_ADDED,
       });
     }
 
@@ -317,7 +318,7 @@ router.post(
     if (!accepted) {
       return res.status(400).json({
         success: false,
-        error: "INVITATION_ACCEPTED_OR_DECLINED",
+        error: MEMBER_ERRORS.INVITATION_ACCEPTED_OR_DECLINED,
       });
     }
 
@@ -342,14 +343,14 @@ router.post(
     if (!invitation) {
       return res.status(404).json({
         success: false,
-        error: "INVITATION_NOT_FOUND",
+        error: MEMBER_ERRORS.INVITATION_NOT_FOUND,
       });
     }
 
     if (invitation.status !== "PENDING") {
       return res.status(400).json({
         success: false,
-        error: "INVITATION_ACCEPTED_OR_DECLINED",
+        error: MEMBER_ERRORS.INVITATION_ACCEPTED_OR_DECLINED,
       });
     }
 
@@ -361,7 +362,7 @@ router.post(
     if (user?.email.toLowerCase() !== invitation.email.toLowerCase()) {
       return res.status(403).json({
         success: false,
-        error: "UNAUTHORIZED",
+        error: COMMON_ERRORS.UNAUTHORIZED,
       });
     }
 
@@ -387,7 +388,7 @@ router.get(
     if (!(await hasRole(adminId, orgId, "admin"))) {
       return res.status(403).json({
         success: false,
-        error: "UNAUTHORIZED",
+        error: COMMON_ERRORS.UNAUTHORIZED,
       });
     }
 
@@ -442,7 +443,7 @@ router.put(
     if (!success) {
       return res.status(400).json({
         success: false,
-        error: "INVALID_ROLE",
+        error: MEMBER_ERRORS.INVALID_ROLE,
       });
     }
 
@@ -453,7 +454,7 @@ router.put(
     if (!(await hasRole(req.id, orgId, "superadmin"))) {
       return res.status(403).json({
         success: false,
-        error: "UNAUTHORIZED_ONLY_SUPERADMIN_CAN_CHANGE_ROLE",
+        error: MEMBER_ERRORS.UNAUTHORIZED_ONLY_SUPERADMIN_CAN_CHANGE_ROLE,
       });
     }
 
@@ -463,7 +464,7 @@ router.put(
     if (!targetMembership || targetMembership.isDeleted) {
       return res.status(404).json({
         success: false,
-        error: "MEMBERSHIP_NOT_FOUND",
+        error: MEMBER_ERRORS.MEMBERSHIP_NOT_FOUND,
       });
     }
     const mutationBlockReason = getMembershipMutationBlockReason(
@@ -474,13 +475,13 @@ router.put(
     if (mutationBlockReason === "SUPERADMIN") {
       return res.status(400).json({
         success: false,
-        error: "SUPERADMIN_ROLE_CANNOT_BE_CHANGED",
+        error: MEMBER_ERRORS.SUPERADMIN_ROLE_CANNOT_BE_CHANGED,
       });
     }
     if (mutationBlockReason === "SELF") {
       return res.status(400).json({
         success: false,
-        error: "CANNOT_CHANGE_OWN_ROLE",
+        error: MEMBER_ERRORS.CANNOT_CHANGE_OWN_ROLE,
       });
     }
 
@@ -495,7 +496,7 @@ router.put(
       if (adminCount <= 1) {
         return res.status(400).json({
           success: false,
-          error: "CANNOT_DEMOTE_LAST_ADMIN",
+          error: MEMBER_ERRORS.CANNOT_DEMOTE_LAST_ADMIN,
         });
       }
     }
@@ -518,7 +519,7 @@ router.put(
     if (!success) {
       return res.status(400).json({
         success: false,
-        error: "INVALID_BOARD_ASSIGNMENT",
+        error: MEMBER_ERRORS.INVALID_BOARD_ASSIGNMENT,
       });
     }
 
@@ -529,7 +530,7 @@ router.put(
     if (!(await hasRole(req.id, orgId, "admin"))) {
       return res.status(403).json({
         success: false,
-        error: "UNAUTHORIZED",
+        error: COMMON_ERRORS.UNAUTHORIZED,
       });
     }
 
@@ -539,20 +540,20 @@ router.put(
     if (!targetMembership || targetMembership.isDeleted) {
       return res.status(404).json({
         success: false,
-        error: "MEMBERSHIP_NOT_FOUND",
+        error: MEMBER_ERRORS.MEMBERSHIP_NOT_FOUND,
       });
     }
     if (req.id === userId) {
       return res.status(400).json({
         success: false,
-        error: "CANNOT_CHANGE_OWN_BOARD_ACCESS",
+        error: MEMBER_ERRORS.CANNOT_CHANGE_OWN_BOARD_ACCESS,
       });
     }
 
     if (targetMembership.role !== "member") {
       return res.status(400).json({
         success: false,
-        error: "BOARD_ASSIGNMENTS_ONLY_APPLY_TO_MEMBERS",
+        error: MEMBER_ERRORS.BOARD_ASSIGNMENTS_ONLY_APPLY_TO_MEMBERS,
       });
     }
 
@@ -568,7 +569,7 @@ router.put(
     if (boards.length !== boardIds.length) {
       return res.status(400).json({
         success: false,
-        error: "INVALID_BOARD_ASSIGNMENT",
+        error: MEMBER_ERRORS.INVALID_BOARD_ASSIGNMENT,
       });
     }
 
@@ -618,7 +619,7 @@ router.delete(
     if (!(await hasRole(adminId, orgId, "superadmin"))) {
       return res.status(403).json({
         success: false,
-        error: "UNAUTHORIZED_ONLY_SUPERADMIN_CAN_REMOVE_MEMBERS",
+        error: MEMBER_ERRORS.UNAUTHORIZED_ONLY_SUPERADMIN_CAN_REMOVE_MEMBERS,
       });
     }
 
@@ -634,7 +635,7 @@ router.delete(
     if (!targetMembership || targetMembership.isDeleted) {
       return res.status(404).json({
         success: false,
-        error: "MEMBERSHIP_NOT_FOUND",
+        error: MEMBER_ERRORS.MEMBERSHIP_NOT_FOUND,
       });
     }
 
@@ -646,13 +647,13 @@ router.delete(
     if (mutationBlockReason === "SUPERADMIN") {
       return res.status(400).json({
         success: false,
-        error: "SUPERADMIN_CANNOT_BE_REMOVED",
+        error: MEMBER_ERRORS.SUPERADMIN_CANNOT_BE_REMOVED,
       });
     }
     if (mutationBlockReason === "SELF") {
       return res.status(400).json({
         success: false,
-        error: "CANNOT_REMOVE_SELF",
+        error: MEMBER_ERRORS.CANNOT_REMOVE_SELF,
       });
     }
 
@@ -667,7 +668,7 @@ router.delete(
       if (adminCount <= 1) {
         return res.status(400).json({
           success: false,
-          error: "CANNOT_REMOVE_LAST_ADMIN",
+          error: MEMBER_ERRORS.CANNOT_REMOVE_LAST_ADMIN,
         });
       }
     }
