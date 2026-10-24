@@ -54,21 +54,31 @@ bunx tsc --noEmit -p apps/websocket/tsconfig.json
 Clients authenticate with a JWT in the WebSocket URL query parameter
 `token`. A `join` message requests a board room; the service requires active
 workspace membership and, for regular members, an active grant for that board.
-Admins and superadmins can join every board in their workspace. Board events
-re-check current access for senders and recipients, and movement messages must
-match a persisted issue and section on the joined board.
-The browser client is not yet fully wired for board-level real-time updates;
-the event protocol is groundwork for that roadmap phase.
+Admins and superadmins can join every board in their workspace. Every
+board-room event re-checks current access for the sender and recipients.
+`issue_moved` is relayed only when the issue's persisted section matches the
+message; the server includes its persisted position. `board_changed` only
+prompts clients to reload from the API and may identify an existing issue for
+activity refresh. Board rename notifications require current board access;
+board deletion notifications require an active workspace admin and an
+already-soft-deleted board. Mutation payloads are never treated as persisted
+state.
+
+The frontend connects when a board page opens, sends `join`, and consumes
+`initial_state`, `join`, and `leave` presence messages. It retries interrupted
+connections with bounded exponential delays and exposes a manual retry after
+the retry limit. After receiving a change event, clients reload the board and
+issue activity from the API.
 
 ### Failed invitation notices
 
 Workspace admins and superadmins join a room with `join_organization` and an
-organization ID. The service verifies admin membership. After an invitation email failure is
-persisted by the API, the initiating client sends `invitation_failed` with
-the invitation and organization IDs. The service verifies the failed
-invitation and current admin role, then broadcasts the event to connected
-admins of that organization. The frontend refreshes the persisted invitation
-list when it receives the notice.
+organization ID. The service verifies admin membership. After an invitation
+email failure is persisted by the API, the initiating client sends
+`invitation_failed` with the invitation and organization IDs. The service
+verifies the failed invitation and current admin role, then broadcasts the
+event to connected admins of that organization. The frontend refreshes the
+persisted invitation list when it receives the notice.
 
 Do not treat client-supplied socket messages as authorization: validate the
 JWT, current membership/role, and associated database record before relaying
