@@ -13,7 +13,7 @@ apps/frontend/src/
   api.ts                   Typed API models, request helper, endpoint functions
   types.ts                 Board and card view models
   hooks/
-    useBoard.ts            Board loading, mutations, optimistic issue moves
+    useBoard.ts            Board loading, optimistic ordering, socket presence
     useWorkspaceBoards.ts  Workspace/board grouping and refresh events
   components/
     AuthPage.tsx
@@ -66,7 +66,14 @@ bun run start
 - The frontend sends the raw stored JWT through the `Authorization` header.
 - Board and workspace data are loaded from the API; mutations update local
   state where implemented to avoid reloading every card/list.
-- Card moves are optimistic and roll back when the API rejects the move.
+- Card moves and within-list reordering are optimistic and roll back when the
+  API rejects the move; the API persists positions.
+- Board pages join an authenticated WebSocket room, display active
+  collaborators and connection state, and retry after bounded reconnect
+  attempts. Retry is available from the connection status control.
+- Connected board clients refresh authoritative API state after card, comment,
+  list, and board rename/delete events. REST remains the source of truth when
+  the socket is offline.
 - Sidebar/workspace changes use local browser events to refresh affected views.
 - The People dialog uses the authenticated WebSocket service for live failed
   invitation delivery notices; it also reads persisted invitation status from

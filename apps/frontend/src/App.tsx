@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import "./index.css";
 import { Menu, Pencil, Plus, Trash2 } from "lucide-react";
 import {
@@ -7,11 +7,17 @@ import {
   Outlet,
   Route,
   Routes,
+  useNavigate,
   useOutletContext,
   useParams,
 } from "react-router";
 import { useAuth } from "./auth";
-import { createBoard, deleteBoard, renameBoard } from "./api";
+import {
+  createBoard,
+  deleteBoard,
+  notifyBoardSocket,
+  renameBoard,
+} from "./api";
 import { SigninPage, SignupPage } from "./components/AuthPage";
 import { BoardCanvas, CardDetail } from "./components/BoardCanvas";
 import { BoardHeader, BoardTopbar } from "./components/BoardTopbar";
@@ -238,8 +244,10 @@ function WorkspaceHome() {
           return;
         }
         await renameBoard(boardManagementDialog.board.id, title);
+        notifyBoardSocket(boardManagementDialog.board.id, "board_changed");
       } else {
         await deleteBoard(boardManagementDialog.board.id);
+        notifyBoardSocket(boardManagementDialog.board.id, "board_deleted");
       }
       setBoardManagementDialog(null);
       window.dispatchEvent(new Event("stackit:boards-changed"));
@@ -491,6 +499,7 @@ function WorkspaceHome() {
 
 function Board() {
   const { toggleSidebar } = useOutletContext<WorkspaceLayoutContext>();
+  const navigate = useNavigate();
   const { boardId } = useParams();
   const {
     columns,
@@ -500,6 +509,10 @@ function Board() {
     error: boardError,
     pendingMoveIds,
     moveError,
+    presenceUsers,
+    socketStatus,
+    retryBoardSocket,
+    notifyBoardChanged,
     addSection,
     createCard,
     updateCard,
@@ -518,6 +531,23 @@ function Board() {
   const [dialogDueDate, setDialogDueDate] = useState("");
   const [dialogError, setDialogError] = useState("");
   const [isSubmittingDialog, setIsSubmittingDialog] = useState(false);
+
+  useEffect(() => {
+    const handleBoardDeleted = () => navigate("/", { replace: true });
+    window.addEventListener("stackit:board-deleted", handleBoardDeleted);
+    return () =>
+      window.removeEventListener("stackit:board-deleted", handleBoardDeleted);
+  }, [navigate]);
+
+  useEffect(() => {
+    setSelectedCard((current) => {
+      if (!current) return current;
+      const updatedCard = columns
+        .flatMap((column) => column.cards)
+        .find((card) => card.id === current.id);
+      return updatedCard ?? null;
+    });
+  }, [columns]);
   const visibleColumns = useMemo(
     () =>
       columns.map((column) => ({
@@ -650,7 +680,13 @@ function Board() {
   return (
     <>
       <main className="board-shell">
-        <BoardTopbar boardTitle={boardTitle} onMenuClick={toggleSidebar} />
+        <BoardTopbar
+          boardTitle={boardTitle}
+          onMenuClick={toggleSidebar}
+          presenceUsers={presenceUsers}
+          socketStatus={socketStatus}
+          onRetrySocket={retryBoardSocket}
+        />
         <BoardHeader title={boardTitle} />
         <BoardToolbar
           query={query}
@@ -667,8 +703,18 @@ function Board() {
         ) : (
           <BoardCanvas
             columns={visibleColumns}
-            onMoveCard={(cardId, sourceColumnId, targetColumnId) => {
-              void moveCard(cardId, sourceColumnId, targetColumnId);
+            onMoveCard={(
+              cardId,
+              sourceColumnId,
+              targetColumnId,
+              targetCardId,
+            ) => {
+              void moveCard(
+                cardId,
+                sourceColumnId,
+                targetColumnId,
+                targetCardId,
+              );
             }}
             pendingMoveIds={pendingMoveIds}
             moveError={moveError}
@@ -707,6 +753,7 @@ function Board() {
             setSelectedCard(null);
             openDialog({ type: "delete-card", card });
           }}
+          onActivityChanged={() => notifyBoardChanged(selectedCard.id)}
         />
       )}
       {dialog && (

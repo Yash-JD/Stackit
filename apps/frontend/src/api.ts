@@ -1,5 +1,70 @@
 const API_URL = import.meta.env?.BUN_PUBLIC_API_URL ?? "http://localhost:3000";
+const WEBSOCKET_URL =
+  import.meta.env?.BUN_PUBLIC_WS_URL ?? "ws://localhost:8080";
 export const AUTH_TOKEN_KEY = "stackit_token";
+
+export function notifyBoardSocket(
+  boardId: string,
+  type: "board_changed" | "board_deleted",
+) {
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  if (!token) {
+    console.warn("Cannot notify board viewers without an active login.");
+    return;
+  }
+
+  let socket: WebSocket;
+  try {
+    socket = new WebSocket(
+      `${WEBSOCKET_URL}?token=${encodeURIComponent(token)}`,
+    );
+  } catch (error) {
+    console.error("Unable to notify board viewers:", error);
+    return;
+  }
+
+  let eventSent = false;
+  let didTimeout = false;
+  const timeout = window.setTimeout(() => {
+    didTimeout = true;
+    console.warn("Timed out notifying board viewers.");
+    socket.close();
+  }, 5_000);
+  socket.onopen = () => {
+    try {
+      socket.send(JSON.stringify({ type, boardId }));
+    } catch (error) {
+      console.error("Unable to notify board viewers:", error);
+      socket.close();
+    }
+  };
+  socket.onmessage = (event) => {
+    try {
+      const message: unknown = JSON.parse(String(event.data));
+      if (
+        message &&
+        typeof message === "object" &&
+        "type" in message &&
+        message.type === "board_event_sent"
+      ) {
+        eventSent = true;
+        socket.close();
+      }
+    } catch (error) {
+      console.error("Unable to read board notification response:", error);
+    }
+  };
+  socket.onerror = (error) => {
+    console.error("Unable to notify board viewers:", error);
+    socket.close();
+  };
+  socket.onclose = () => {
+    window.clearTimeout(timeout);
+    if (!eventSent && !didTimeout) {
+      console.warn("The board notification was not confirmed by the server.");
+    }
+  };
+}
 
 export type ApiResponse<T = unknown> = {
   success: boolean;
@@ -37,6 +102,7 @@ export type IssueSummary = {
   dueDate: string | null;
   boardId: string;
   sectionId: string;
+  position: number;
   isDeleted: boolean;
 };
 
@@ -527,12 +593,17 @@ export async function deleteIssue(issueId: string) {
   });
 }
 
-export async function moveIssue(issueId: string, sectionId: string) {
+export async function moveIssue(
+  issueId: string,
+  sectionId: string,
+  position: number,
+) {
   const response = await apiRequest<IssueSummary>(
     `/api/v1/issue/move/${encodeURIComponent(issueId)}/${encodeURIComponent(sectionId)}`,
     {
       method: "PUT",
       authenticated: true,
+      body: JSON.stringify({ position }),
     },
   );
 

@@ -1048,18 +1048,57 @@ button {
   font-size: 9px;
   font-weight: 800;
 }
-.presence-one {
-  background: #e6b89a;
-}
-.presence-two {
+.presence-avatar {
+  overflow: hidden;
   background: #98c6c2;
 }
-.presence-three {
-  background: #d2a8d6;
+.presence-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .presence-more {
   color: #c9d8d7;
   background: #2a3a3d;
+}
+.socket-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 9px;
+  border: 1px solid rgba(168, 229, 211, 0.12);
+  border-radius: 999px;
+  color: #a9bab7;
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.socket-status:disabled {
+  cursor: default;
+}
+.socket-status-unavailable {
+  border-color: rgba(238, 136, 123, 0.35);
+  color: #f0a69d;
+}
+.socket-status-unavailable:not(:disabled):hover {
+  background: rgba(238, 136, 123, 0.1);
+}
+.socket-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #87918f;
+}
+.socket-status-connected .socket-status-dot {
+  background: #65d3a5;
+  box-shadow: 0 0 8px rgba(101, 211, 165, 0.5);
+}
+.socket-status-reconnecting .socket-status-dot,
+.socket-status-connecting .socket-status-dot {
+  background: #edb44f;
+}
+.socket-status-unavailable .socket-status-dot {
+  background: #ef8175;
 }
 .upgrade-button,
 .share-button {
@@ -1695,6 +1734,17 @@ button {
   .presence-stack,
   .upgrade-button {
     display: none;
+  }
+  .socket-status {
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    overflow: hidden;
+    font-size: 0;
+  }
+  .socket-status-dot {
+    flex: 0 0 7px;
   }
   .board-header,
   .board-toolbar,

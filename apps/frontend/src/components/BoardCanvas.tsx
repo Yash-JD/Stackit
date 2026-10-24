@@ -27,6 +27,7 @@ type BoardCanvasProps = {
     cardId: string,
     sourceColumnId: string,
     targetColumnId: string,
+    targetCardId: string | null,
   ) => void;
   canManageLists: boolean;
   pendingMoveIds: string[];
@@ -71,7 +72,7 @@ export function BoardCanvas({
       <div className="board-summary">
         <span>{cardCount} cards</span>
         <span className="summary-separator" />
-        <span>Drag cards between lists to move them</span>
+        <span>Drag cards to move them or change their order</span>
       </div>
       {moveError && (
         <p className="board-move-error" role="alert">
@@ -112,6 +113,7 @@ export function BoardCanvas({
                   draggedCard.id,
                   draggedCard.sourceColumnId,
                   column.id,
+                  null,
                 );
               }
               setDraggedCard(null);
@@ -122,6 +124,21 @@ export function BoardCanvas({
               setDraggedCard({ id: card.id, sourceColumnId: column.id });
             }}
             onCardDragEnd={() => {
+              setDraggedCard(null);
+              setDragOverColumnId(null);
+            }}
+            onCardDrop={(event, targetCardId) => {
+              event.preventDefault();
+              event.stopPropagation();
+              const cardId = event.dataTransfer.getData("text/plain");
+              if (draggedCard && cardId === draggedCard.id) {
+                onMoveCard(
+                  draggedCard.id,
+                  draggedCard.sourceColumnId,
+                  column.id,
+                  targetCardId,
+                );
+              }
               setDraggedCard(null);
               setDragOverColumnId(null);
             }}
@@ -174,6 +191,7 @@ function BoardColumnView({
   onDrop,
   onCardDragStart,
   onCardDragEnd,
+  onCardDrop,
 }: {
   column: BoardColumn;
   onAddCard: (columnId: string) => void;
@@ -188,6 +206,7 @@ function BoardColumnView({
   onDrop: (event: DragEvent<HTMLElement>) => void;
   onCardDragStart: (cardId: string) => void;
   onCardDragEnd: () => void;
+  onCardDrop: (event: DragEvent<HTMLElement>, targetCardId: string) => void;
 }) {
   return (
     <section
@@ -226,6 +245,12 @@ function BoardColumnView({
               onCardDragStart(card.id);
             }}
             onDragEnd={onCardDragEnd}
+            onDragOver={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              event.dataTransfer.dropEffect = "move";
+            }}
+            onDrop={(event) => onCardDrop(event, card.id)}
           >
             <div className="task-card-actions">
               <button
@@ -296,12 +321,14 @@ export function CardDetail({
   onClose,
   onDelete,
   onEdit,
+  onActivityChanged,
 }: {
   card: Card;
   sectionTitle: string;
   onClose: () => void;
   onDelete?: () => void;
   onEdit?: () => void;
+  onActivityChanged: () => void;
 }) {
   const [comments, setComments] = useState<IssueComment[]>([]);
   const [activities, setActivities] = useState<IssueActivity[]>([]);
@@ -371,6 +398,7 @@ export function CardDetail({
     try {
       await createIssueComment(card.id, text);
       setCommentText("");
+      onActivityChanged();
       await refreshCollaboration();
     } catch (error) {
       setActionError(
@@ -390,6 +418,7 @@ export function CardDetail({
       await updateIssueComment(commentId, text);
       setEditingCommentId(null);
       setEditingCommentText("");
+      onActivityChanged();
       await refreshCollaboration();
     } catch (error) {
       setActionError(
@@ -405,6 +434,7 @@ export function CardDetail({
     setIsSubmitting(true);
     try {
       await deleteIssueComment(commentId);
+      onActivityChanged();
       await refreshCollaboration();
     } catch (error) {
       setActionError(

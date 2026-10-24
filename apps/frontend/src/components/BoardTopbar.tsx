@@ -1,13 +1,30 @@
 import { Bell, Menu, Sparkles, Users } from "lucide-react";
 import { useNavigate } from "react-router";
+import type { BoardPresenceUser, BoardSocketStatus } from "../hooks/useBoard";
 
 type BoardTopbarProps = {
   boardTitle?: string;
   onMenuClick: () => void;
+  presenceUsers: BoardPresenceUser[];
+  socketStatus: BoardSocketStatus;
+  onRetrySocket: () => void;
 };
 
-export function BoardTopbar({ boardTitle, onMenuClick }: BoardTopbarProps) {
+export function BoardTopbar({
+  boardTitle,
+  onMenuClick,
+  presenceUsers,
+  socketStatus,
+  onRetrySocket,
+}: BoardTopbarProps) {
   const navigate = useNavigate();
+  const statusLabels: Record<BoardSocketStatus, string> = {
+    idle: "Offline",
+    connecting: "Connecting",
+    connected: "Live",
+    reconnecting: "Reconnecting",
+    unavailable: "Connection unavailable",
+  };
 
   return (
     <header className="topbar">
@@ -25,11 +42,39 @@ export function BoardTopbar({ boardTitle, onMenuClick }: BoardTopbarProps) {
       </div>
       <div className="topbar-actions">
         <div className="presence-stack">
-          <span className="presence-avatar presence-one">A</span>
-          <span className="presence-avatar presence-two">R</span>
-          <span className="presence-avatar presence-three">M</span>
-          <span className="presence-more">+5</span>
+          {presenceUsers.slice(0, 3).map((user) => (
+            <span
+              className="presence-avatar"
+              key={user.id}
+              title={user.email}
+              aria-label={user.email}
+            >
+              {user.profile ? (
+                <img src={user.profile} alt="" />
+              ) : (
+                user.email.charAt(0).toUpperCase()
+              )}
+            </span>
+          ))}
+          {presenceUsers.length > 3 && (
+            <span className="presence-more">+{presenceUsers.length - 3}</span>
+          )}
         </div>
+        <button
+          className={`socket-status socket-status-${socketStatus}`}
+          type="button"
+          onClick={socketStatus === "unavailable" ? onRetrySocket : undefined}
+          disabled={socketStatus !== "unavailable"}
+          aria-live="polite"
+          title={
+            socketStatus === "unavailable"
+              ? "Retry live board connection"
+              : `Board connection: ${statusLabels[socketStatus]}`
+          }
+        >
+          <span className="socket-status-dot" />
+          {statusLabels[socketStatus]}
+        </button>
         <button className="icon-button" aria-label="Notifications">
           <Bell size={18} />
         </button>
@@ -46,7 +91,7 @@ export function BoardHeader({ title = "Board" }: { title?: string }) {
     <section className="board-header">
       <div>
         <div className="eyebrow">
-          Product operations <span className="status-dot" /> Live workspace
+          Product operations <span className="status-dot" /> Board workspace
         </div>
         <h1>{title}</h1>
         <p>Turn the next big idea into something people can use.</p>
