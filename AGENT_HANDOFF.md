@@ -13,8 +13,9 @@ secret environment values into this file.
   WebSocket service, and shared Prisma/PostgreSQL package.
 - **Package manager:** Bun 1.3.14.
 - **Current product milestone:** Phases 1–12 are implemented in code and
-  validated; Phase 13 quality and polish is in progress. Phase 10, 11, and 12
-  migrations are not yet applied to a database.
+  validated; Phase 13 quality and polish is in progress. The project owner
+  reports that Phase 10–12 migrations have been handled; verify target
+  database migration status before any future migration operation.
 - **Canonical docs:** [project flow and roadmap](./PROJECT_FLOW.md),
   [root setup](./README.md), and the four package guides linked below.
 
@@ -39,6 +40,8 @@ secret environment values into this file.
   retry action. API changes remain persisted while realtime is unavailable.
 - Card ordering rules and the shared workspace-role/board-grant access policy
   have database-independent Bun unit tests.
+- Invitation delivery success/failure handling, including failure-status
+  persistence errors, has database-independent Bun unit tests.
 - Keyboard users can move cards between lists and reorder cards when search
   and label filters are inactive. Board load errors offer retry, and empty
   lists explain their state.
@@ -67,16 +70,17 @@ secret environment values into this file.
 ### Remaining considerations
 
 - Phase 10 migrations add board grants and `superadmin`; Phase 11 adds card
-  metadata and issue activity; Phase 12 adds issue ordering. All migrations
-  are present but not applied. The Prisma schema and generated client have
-  been validated. The legacy migration promotes the oldest active admin
+  metadata and issue activity; Phase 12 adds issue ordering. The project owner
+  reports these migrations have been handled; verify target database status
+  before running migration commands. The legacy migration promotes the oldest active admin
   membership as superadmin because prior schema did not record workspace
   creators; existing members are intentionally not granted boards.
 - Realtime notifications are best-effort. The API and database remain the
   source of truth, and users can manually retry the WebSocket connection.
-- Phase 13 is incomplete: the test suite covers issue-ordering rules, but
-  permission, invite failure, frontend, WebSocket, and database integration
-  regressions still need coverage.
+- Phase 13 is incomplete: database-independent tests cover issue ordering,
+  board-access policy, and invitation email failure handling. API persistence,
+  frontend, WebSocket, and database integration regressions still need
+  coverage.
 
 ## Architecture and package guides
 
@@ -214,14 +218,15 @@ scope.
    staged and unstaged work.
 3. Confirm which roadmap phase or bug is in scope from the latest user
    request. Phase 12 real-time collaboration is implemented; Phase 13 quality
-   and polish is in progress. Review pending migrations before applying them
-   to a target database.
+   and polish is in progress. The project owner reports migrations through
+   Phase 12 are handled; verify the target database before migration work.
 4. Trace a continuous feature across UI, API, authorization, WebSocket, and
    data model as applicable; preserve established patterns.
 5. Validate with the narrowest relevant type-check/build/tests and report
    what was and was not exercised. Phases 10 and 11 were validated with Prisma
    schema validation/client generation, affected API/frontend type-checks,
-   frontend build, and diff checks. Phase 13 adds Bun tests for issue ordering;
-   no DB migration or live user-data change was run.
+   frontend build, and diff checks. Phase 13 adds Bun tests for ordering,
+   board-access policy, and invitation failure handling; no DB migration or
+   live user-data change was run during this work.
 6. Update this handoff and the project flow before finishing, and update
    package guides affected by the change.

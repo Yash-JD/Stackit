@@ -82,12 +82,14 @@ workflow rather than running `migrate dev`.
 The Phase 10 migrations add the superadmin role and board-grant tables, the
 Phase 11 migration adds card metadata and activity history, and the Phase 12
 migration adds/backfills issue positions and a section-order index. These
-migrations are present but not applied by this implementation. The current
-Prisma schema and generated client have been validated.
+migrations are present. The project owner reports these migrations have been
+handled; verify migration status against the intended database before future
+migration operations. The current Prisma schema and generated client have
+been validated.
 The legacy migration promotes the oldest active admin in each existing
 workspace because workspace creator identity was not recorded in the old
 schema. Existing regular members are intentionally not granted boards; assign
-their board access after the migrations are applied.
+their board access as needed after migration status is confirmed.
 
 ## Change checklist
 

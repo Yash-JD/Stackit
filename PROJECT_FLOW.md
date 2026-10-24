@@ -103,9 +103,9 @@ frontend phase history and implementation concepts.
 ## Development roadmap
 
 Phases 1–12 are implemented in code. The Phase 10, Phase 11, and Phase 12
-database migrations are present; the Prisma schema and generated client have
-been validated, but migrations must still be reviewed and applied to the
-target database.
+database migrations are present and the project owner reports they have been
+handled. Verify migration status against the intended database before future
+migration operations; do not assume they need to be reapplied.
 Continue with the following phases, adjusting scope as real product decisions
 are made:
 
@@ -118,19 +118,19 @@ are made:
 - Complete: persist and synchronize card ordering within sections.
 - Complete: validate current socket permissions and relevant database records;
   client messages do not authorize or supply authoritative mutation data.
-- The ordering migration is generated but has not been applied to a database.
+- The project owner reports that the ordering migration has been handled.
 
 ### Phase 13 — Quality and polish (in progress)
 
-- Added database-independent backend unit tests for card ordering and the
-  shared board-access policy; frontend, WebSocket, and database integration
-  coverage remains.
+- Added database-independent backend unit tests for card ordering, the shared
+  board-access policy, and invitation email failure handling; frontend,
+  WebSocket, and database integration coverage remains.
 - Improve accessibility, keyboard use, responsive layouts, and interaction
   feedback. Card moves now have keyboard-accessible controls.
 - Standardize loading, empty, retry, and error states. Board loading errors
   include retry controls and empty lists have explanatory text.
-- Add regression coverage for workspace permissions, invite delivery failures,
-  optimistic updates, and real-time behavior.
+- Add regression coverage for API-level permission enforcement, optimistic
+  updates, and real-time behavior.
 
 ### Phase 14 — Production readiness
 
@@ -142,10 +142,9 @@ are made:
 
 ## Known limitations and decisions to revisit
 
-- The Phase 10, 11, and 12 migrations are not applied automatically by schema
-  generation. Apply the reviewed migrations before using the new roles, board
-  grants, card metadata, activity API, or persisted ordering against an
-  existing database.
+- Migrations are not applied automatically by schema generation. The project
+  owner reports that the Phase 10–12 migrations have been handled. Check the
+  intended database's migration status before running migration commands.
 - The legacy migration promotes the oldest active `admin` membership in each
   workspace to `superadmin`, because the old schema did not record a workspace
   creator. It intentionally does not assign boards to existing members.
@@ -155,13 +154,12 @@ are made:
 - Board and card mutations remain available through the API while WebSocket
   clients reconnect; connected peers may need a refresh if a notification
   could not be delivered.
-- Phase 12 ordering migration is not applied. Generate/validate the Prisma
-  client as needed, then review and apply migrations only against the intended
-  database.
-- The test suite currently covers issue-ordering rules only; add regression
-  coverage for permissions, collaboration, invitation failures, API
-  persistence, and optimistic updates as Phase 13 continues. No CI workflow
-  is configured.
+- Phase 12 ordering migration status is reported handled by the project owner;
+  verify against the intended database if migration state becomes relevant.
+- The test suite covers issue-ordering rules, the shared board-access policy,
+  and invitation failure handling. Add API persistence, frontend, WebSocket,
+  and optimistic-update coverage as Phase 13 continues. No CI workflow is
+  configured.
 
 ## Documentation maintenance
 

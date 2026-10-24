@@ -22,6 +22,7 @@ apps/backend/
     authMiddleware.ts      JWT verification and request user identity
     hasRole.ts             Workspace role and board-grant checks
     boardAccessPolicy.ts   Shared pure role/grant decision for board access
+    invitationDelivery.ts  Invitation email delivery and failure persistence
     email.ts               Invitation and password-reset email delivery
     errorHandler.ts        Shared Express error response handling
   shared/
@@ -80,9 +81,9 @@ API health checks:
 - `http://localhost:3000/api-docs`
 
 Run focused backend unit tests from the repository root with `bun test`, or
-from this package with `bun run test`. Current tests cover card ordering and
-the shared workspace-role/board-grant policy, use Bun's built-in test runner,
-and do not require a database.
+from this package with `bun run test`. Current tests cover card ordering, the
+shared workspace-role/board-grant policy, and invitation email failure
+handling. They use Bun's built-in test runner and do not require a database.
 
 For a direct non-watch run from this package, use `bun run index.ts` after
 configuring the required environment variables.
@@ -108,10 +109,10 @@ admins can manage workspace/board/list operations and access all workspace
 boards. Members must have an active workspace membership and explicit board
 grant; they can manage cards and comments on assigned boards. The API rejects
 attempts to demote or remove the superadmin, including self-removal. Board
-grant changes are validated against the target workspace. Apply the reviewed
-Phase 10 and 11 migrations before using the new roles, grants, metadata, or
-activity routes on an existing database. Apply the reviewed Phase 12 ordering
-migration before using persisted card ordering on an existing database.
+grant changes are validated against the target workspace. The project owner
+reports that the Phase 10–12 migrations have been handled. Verify migration
+status against the intended database before any future migration operation;
+do not rerun them based on this guide alone.
 
 Cards persist one of the existing labels (`Design`, `Build`, `Research`) and
 an optional date-only due date. Their position within a section is persisted;
@@ -120,7 +121,7 @@ an optional date-only due date. Their position within a section is persisted;
 position. Authorized users can read and add activity history for cards.
 Comments can be edited or deleted only by their author; deleted comments are
 soft-deleted, while their activity entries remain. Phase 12 ordering migration
-is generated but has not been applied.
+is part of the Phase 12 schema and migration history.
 
 ## Change checklist
 
