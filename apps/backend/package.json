@@ -3,15 +3,31 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "prisma-all": "cd ../../packages/db && bun run prisma-all",
+    "start:dev": "cd ../.. && bun --watch --env-file apps/backend/.env apps/backend/index.ts",
+    "test": "bun test"
+  },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/swagger-ui-express": "^4.1.8"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "db": "*",
     "express": "^5.2.1",
-    "db": "*"
+    "jsonwebtoken": "^9.0.3",
+    "resend": "^6.29.0",
+    "swagger-ui-express": "^5.0.1",
+    "ws": "^8.21.3",
+    "zod": "^4.5.4"
   }
 }

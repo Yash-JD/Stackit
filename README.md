@@ -1,159 +1,103 @@
-# Turborepo starter
+# Stackit
 
-This Turborepo starter is maintained by the Turborepo core team.
+Stackit is a Trello-style project management application organized as a Bun
+workspace monorepo. The web client, HTTP API, WebSocket service, and Prisma
+database package live in separate workspaces.
 
-## Using this example
+## Documentation
 
-Run the following command:
+- [Project flow and product roadmap](./PROJECT_FLOW.md): current user workflows
+  and planned development phases.
+- [Agent handoff](./AGENT_HANDOFF.md): current project state, architecture,
+  development conventions, and continuation instructions for coding agents.
+- [Frontend learning notes](./FRONTEND_LEARNING.md): phased frontend
+  implementation notes and concepts.
+- [Backend guide](./apps/backend/README.md)
+- [Frontend guide](./apps/frontend/README.md)
+- [WebSocket guide](./apps/websocket/README.md)
+- [Database guide](./packages/db/README.md)
 
-```sh
-npx create-turbo@latest
+Keep the flow and handoff documents, and any affected package guide, updated
+alongside implementation changes. They are the canonical project context for
+future contributors and coding agents.
+
+## Requirements
+
+- Bun 1.3.14 (the repository's configured package-manager version)
+- A PostgreSQL database
+
+Install dependencies from the repository root:
+
+```bash
+bun install
 ```
 
-## What's inside?
+Configure local environment files before starting services. Do not commit
+environment files or put secret values in documentation:
 
-This Turborepo includes the following packages/apps:
+- `packages/db/.env`: `DATABASE_URL` for Prisma CLI operations.
+- `apps/backend/.env`: `DATABASE_URL`, `JWT_SECRET`, and `RESEND_API_KEY`.
+  The WebSocket dev script loads this file too; `WS_PORT` is optional and
+  defaults to `8080`.
+- The frontend can use `BUN_PUBLIC_API_URL` and `BUN_PUBLIC_WS_URL`; defaults
+  are `http://localhost:3000` and `ws://localhost:8080`. Its dev server uses
+  port `5173` by default (`PORT` can override it).
 
-### Apps and Packages
+Use the same database connection for the runtime services and Prisma CLI.
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+## Run locally
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+Run the following in separate terminals from the indicated package directories.
+Apply database migrations before starting the services.
 
-### Utilities
+1. Prepare/generate the database client and apply development migrations:
 
-This Turborepo has some additional tools already setup for you:
+   ```bash
+   cd apps/backend
+   bun run prisma-all
+   ```
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
+   This forwards to the database package's `prisma-all` script, which formats
+   the schema, generates Prisma Client, and runs `prisma migrate dev`. The
+   migration step modifies the configured database.
 
-### Build
+2. Start the API:
 
-To build all apps and packages, run the following command:
+   ```bash
+   cd apps/backend
+   bun run start:dev
+   ```
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+3. Start the WebSocket service:
 
-```sh
-cd my-turborepo
-turbo build
+   ```bash
+   cd apps/websocket
+   bun run start:dev
+   ```
+
+4. Start the frontend:
+
+   ```bash
+   cd apps/frontend
+   bun run dev
+   ```
+
+The local services use frontend `http://localhost:5173`, API
+`http://localhost:3000`, and WebSocket `ws://localhost:8080` by default.
+The API health checks are `/health` and `/health/db`; interactive API
+documentation is at `/api-docs`.
+
+## Common checks
+
+Run from the repository root:
+
+```bash
+bunx tsc --noEmit -p apps/frontend/tsconfig.json
+bunx tsc --noEmit -p apps/backend/tsconfig.json
+bunx tsc --noEmit -p apps/websocket/tsconfig.json
+bun run --cwd apps/frontend build
 ```
 
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo build
-bun dlx turbo build
-bun exec turbo build
-```
-
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo build --filter=docs
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo build --filter=docs
-bun exec turbo build --filter=docs
-bun exec turbo build --filter=docs
-```
-
-### Develop
-
-To develop all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo dev
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo dev
-bun exec turbo dev
-bun exec turbo dev
-```
-
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo dev --filter=web
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo dev --filter=web
-bun exec turbo dev --filter=web
-bun exec turbo dev --filter=web
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo login
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo login
-bun exec turbo login
-bun exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-bun exec turbo link
-bun exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+The workspace does not currently define a dedicated automated test suite.
+See each package guide for its responsibilities, file layout, and package
+specific commands.

@@ -1,0 +1,237 @@
+import express, { type Response, type Request } from "express";
+import { SectionSchema, SectionUpdateSchema } from "../zod";
+import { prisma } from "db/client";
+
+import { authMiddleware } from "../helper/authMiddleware";
+import { hasRole } from "../helper/hasRole";
+import {
+  COMMON_ERRORS,
+  ORG_ERRORS,
+  BOARD_ERRORS,
+  SECTION_ERRORS,
+} from "../helper/errors";
+
+const router = express.Router();
+
+router.post(
+  "/api/v1/section",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    const { success, data } = SectionSchema.safeParse(req.body);
+    if (!success) {
+      return res.status(400).json({
+        success: false,
+        error: COMMON_ERRORS.INVALID_REQUEST,
+      });
+    }
+
+    const userId = req.id;
+
+    const board = await prisma.boards.findUnique({
+      where: {
+        id: data.boardId,
+        isDeleted: false,
+      },
+    });
+    if (!board) {
+      return res.status(404).json({
+        success: false,
+        error: BOARD_ERRORS.BOARD_NOT_FOUND,
+      });
+    }
+
+    if (!(await hasRole(userId, board.orgId, "admin"))) {
+      return res.status(400).json({
+        success: false,
+        error: ORG_ERRORS.NOT_AUTHENTICATED_TO_CREATE_ORG,
+      });
+    }
+
+    const section = await prisma.section.create({
+      data: {
+        title: data.title,
+        boardId: data.boardId,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: section,
+    });
+  },
+);
+
+router.put(
+  [
+    "/api/v1/section/:sectionId",
+    "/api/v1/section/:sectionId/rename",
+    "/api/v1/section/:sectionId/update",
+  ],
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    const { success, data } = SectionUpdateSchema.safeParse(req.body);
+    if (!success) {
+      return res.status(400).json({
+        success: false,
+        error: COMMON_ERRORS.INVALID_REQUEST,
+      });
+    }
+
+    const sectionId = req.params.sectionId as string;
+    if (!sectionId) {
+      return res.status(400).json({
+        success: false,
+        error: SECTION_ERRORS.PLEASE_PROVIDE_SECTION_ID,
+      });
+    }
+    const userId = req.id;
+
+    const existingSection = await prisma.section.findUnique({
+      where: {
+        id: sectionId,
+        isDeleted: false,
+      },
+      include: {
+        board: true,
+      },
+    });
+    if (!existingSection) {
+      return res.status(404).json({
+        success: false,
+        error: SECTION_ERRORS.SECTION_NOT_FOUND,
+      });
+    }
+
+    if (!(await hasRole(userId, existingSection.board.orgId, "admin"))) {
+      return res.status(400).json({
+        success: false,
+        error: ORG_ERRORS.NOT_AUTHENTICATED_TO_CREATE_ORG,
+      });
+    }
+
+    const section = await prisma.section.update({
+      where: {
+        id: sectionId,
+        isDeleted: false,
+      },
+      data: {
+        title: data.title,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: section,
+    });
+  },
+);
+
+router.get(
+  "/api/v1/section",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    const userId = req.id;
+    const orgId = req.query.orgId as string;
+    if (!orgId) {
+      return res.status(400).json({
+        success: false,
+        error: ORG_ERRORS.PLEASE_PROVIDE_ORGID,
+      });
+    }
+
+    const membership = await prisma.membership.findFirst({
+      where: {
+        userId,
+        orgId,
+        isDeleted: false,
+        organization: { isDeleted: false },
+      },
+    });
+    if (!membership) {
+      return res.status(403).json({
+        success: false,
+        error: COMMON_ERRORS.UNAUTHORIZED,
+      });
+    }
+    const boards = await prisma.boards.findMany({
+      where: {
+        orgId,
+        isDeleted: false,
+        organization: { isDeleted: false },
+        ...(membership.role === "member"
+          ? {
+              memberships: {
+                some: {
+                  userId,
+                  isDeleted: false,
+                },
+              },
+            }
+          : {}),
+      },
+      include: {
+        sections: { where: { isDeleted: false } },
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: boards,
+    });
+  },
+);
+
+router.delete(
+  ["/api/v1/section/:sectionId", "/api/v1/section/:sectionId/delete"],
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    const userId = req.id;
+
+    const sectionId = req.params.sectionId as string;
+    if (!sectionId) {
+      return res.status(400).json({
+        success: false,
+        error: SECTION_ERRORS.PLEASE_PROVIDE_SECTION_ID,
+      });
+    }
+
+    const existingSection = await prisma.section.findUnique({
+      where: {
+        id: sectionId,
+        isDeleted: false,
+      },
+      include: {
+        board: true,
+      },
+    });
+    if (!existingSection) {
+      return res.status(404).json({
+        success: false,
+        error: SECTION_ERRORS.SECTION_NOT_FOUND,
+      });
+    }
+
+    if (!(await hasRole(userId, existingSection.board.orgId, "admin"))) {
+      return res.status(400).json({
+        success: false,
+        error: ORG_ERRORS.NOT_AUTHENTICATED_TO_CREATE_ORG,
+      });
+    }
+
+    await prisma.section.update({
+      where: {
+        id: sectionId,
+      },
+      data: {
+        isDeleted: true,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      msg: "SECTION_SUCCESSFULLY_DELETED",
+    });
+  },
+);
+
+export default router;
