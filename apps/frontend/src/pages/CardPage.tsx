@@ -621,15 +621,15 @@ export function CardPage() {
                     <div
                       className="comment-avatar"
                       style={{
-                        background: getAvatarGradient(comment.user.email),
+                        background: getAvatarGradient(comment.user?.email || comment.id),
                         color: "#ffffff",
                         fontWeight: 700,
                       }}
                     >
-                      {comment.user.profilePhoto ? (
+                      {comment.user?.profilePhoto ? (
                         <img src={comment.user.profilePhoto} alt="" />
                       ) : (
-                        comment.user.email.charAt(0).toUpperCase()
+                        (comment.user?.email || "?").charAt(0).toUpperCase()
                       )}
                     </div>
                     <div className="comment-body">
@@ -637,7 +637,7 @@ export function CardPage() {
                         <div className="comment-author-badge">
                           <User size={13} className="comment-prefix-icon" />
                           <strong className="comment-author">
-                            {comment.user.email.split("@")[0]}
+                            {comment.user?.email?.split("@")[0] || "Member"}
                           </strong>
                         </div>
                         <span className="comment-time">
@@ -868,7 +868,9 @@ export function CardPage() {
                     />
                     <div className="activity-content">
                       <p className="activity-text">
-                        <strong>{act.actor.email.split("@")[0]}</strong>{" "}
+                        <strong>
+                          {act.actor?.email ? act.actor.email.split("@")[0] : "Member"}
+                        </strong>{" "}
                         {act.action}
                         {act.details && ` (${act.details})`}
                       </p>

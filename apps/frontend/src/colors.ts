@@ -10,12 +10,13 @@ export const AVATAR_GRADIENTS = [
 ];
 
 export function getAvatarGradient(seed: string, offset = 0): string {
-  if (!seed) return AVATAR_GRADIENTS[Math.abs(offset) % AVATAR_GRADIENTS.length];
+  const fallback = AVATAR_GRADIENTS[0] ?? "linear-gradient(135deg, #a78bfa, #7c3aed)";
+  if (!seed) return AVATAR_GRADIENTS[Math.abs(offset) % AVATAR_GRADIENTS.length] ?? fallback;
   let hash = 0;
   for (let i = 0; i < seed.length; i++) {
     hash = seed.charCodeAt(i) + ((hash << 5) - hash);
   }
-  return AVATAR_GRADIENTS[(Math.abs(hash) + offset) % AVATAR_GRADIENTS.length];
+  return AVATAR_GRADIENTS[(Math.abs(hash) + offset) % AVATAR_GRADIENTS.length] ?? fallback;
 }
 
 export function getTagColorClass(label: string): string {

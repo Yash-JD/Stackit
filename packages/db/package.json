@@ -4,7 +4,9 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "prisma-all": "bunx prisma format && prisma generate && prisma migrate dev"
+    "prisma-all": "bunx prisma format && prisma generate && prisma migrate dev",
+    "db:deploy": "bunx prisma migrate deploy",
+    "db:generate": "bunx prisma generate"
   },
   "exports": {
     "./client": "./index.ts"

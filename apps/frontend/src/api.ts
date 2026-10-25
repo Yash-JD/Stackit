@@ -1,6 +1,11 @@
-const API_URL = import.meta.env?.BUN_PUBLIC_API_URL ?? "http://localhost:3000";
+const API_URL =
+  import.meta.env?.BUN_PUBLIC_API_URL ||
+  (typeof process !== "undefined" && process.env?.BUN_PUBLIC_API_URL) ||
+  "http://localhost:3000";
 const WEBSOCKET_URL =
-  import.meta.env?.BUN_PUBLIC_WS_URL ?? "ws://localhost:8080";
+  import.meta.env?.BUN_PUBLIC_WS_URL ||
+  (typeof process !== "undefined" && process.env?.BUN_PUBLIC_WS_URL) ||
+  "ws://localhost:8080";
 export const AUTH_TOKEN_KEY = "stackit_token";
 
 export function notifyBoardSocket(

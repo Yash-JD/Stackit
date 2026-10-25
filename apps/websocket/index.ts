@@ -74,17 +74,21 @@ class WsManager {
 
   private joinedOrganizations = new Map<WebSocket, Set<string>>();
 
-  private constructor() {
-    this.wss = new WebSocketServer({
-      port: WS_PORT,
-    });
+  private constructor(server?: import("node:http").Server) {
+    if (server) {
+      this.wss = new WebSocketServer({ server });
+    } else {
+      this.wss = new WebSocketServer({
+        port: WS_PORT,
+      });
+    }
 
     this.initialize();
   }
 
-  public static getInstance(): WsManager {
+  public static getInstance(server?: import("node:http").Server): WsManager {
     if (!WsManager.instance) {
-      WsManager.instance = new WsManager();
+      WsManager.instance = new WsManager(server);
     }
 
     return WsManager.instance;
@@ -605,4 +609,13 @@ class WsManager {
   }
 }
 
-WsManager.getInstance();
+export function initWebSocketServer(
+  server?: import("node:http").Server,
+): WsManager {
+  return WsManager.getInstance(server);
+}
+
+// Auto-start standalone WebSocket server if executed directly (e.g. bun apps/websocket/index.ts)
+if (import.meta.main || process.env.RUN_STANDALONE_WS === "true") {
+  WsManager.getInstance();
+}
